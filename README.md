@@ -43,7 +43,7 @@ npx serve .
 php -S localhost:8000
 ```
 
-##🎮 Jak korzystać
+## 🎮 Jak korzystać
 
 Krok 1/4 — Podłącz pad
 Kliknij „Połącz z padem” i wybierz „BETAFPV Joystick” z listy urządzeń.
@@ -62,7 +62,7 @@ ROLL — prawy drążek w lewo/prawo
 Pary nieprzypisane (ustawione na ---) są ignorowane.
 
 
-##⚠️ Uwaga: mapowanie trzeba powtórzyć za każdym razem po odświeżeniu strony. Pad przy każdym podłączeniu generuje sygnał na innych parach bajtów — dlatego nie da się zapisać mapowania na stałe.
+### ⚠️ Uwaga: mapowanie trzeba powtórzyć za każdym razem po odświeżeniu strony. Pad przy każdym podłączeniu generuje sygnał na innych parach bajtów — dlatego nie da się zapisać mapowania na stałe.
 
 Krok 3/4 — Kalibracja zakresów
 Program poprosi Cię po kolei o ruszanie każdą funkcją. Ruszaj drążkiem do oporu w obie strony — kalibracja trwa ~4 sekundy na funkcję (łącznie ~16 s).
@@ -71,7 +71,7 @@ Krok 4/4 — Wybór planszy
 Wybierz poziom trudności i startuj. W locie możesz wrócić do menu przyciskiem ⬅ Menu w prawym górnym rogu.
 
 
-##Sterowanie
+## Sterowanie
 
 Funkcja	Drążek	Efekt
 Throttle	Lewy ↑↓	Ciąg silników (góra/dół)
@@ -80,13 +80,13 @@ Pitch	Prawy ↑↓	Pochylenie przód/tył
 Roll	Prawy ←→	Pochylenie na boki
 
 
-##❌ Nie działa bezpośrednio
+## ❌ Nie działa bezpośrednio
 
 Pady XInput (Xbox, DualShock/DualSense) — WebHID nie ma do nich dostępu ze względów bezpieczeństwa. Wymagana migracja na Gamepad API.
 Pad DJI RC-N1 (Mini 2 / Air 2 / Mini 3) — po podłączeniu przez USB nie jest rozpoznawany jako HID. Wymaga zewnętrznego konwertera (np. DJI_RC-N1_SIMULATOR_FLY_DCL) + Gamepad API.
 Aparatury Radiomaster Zorro / Pocket / TBS Tango 2 — teoretycznie kompatybilne po przełączeniu w tryb USB Joystick, ale wymagają zmiany VID/PID w kodzie.
 
-##🤝 Wkład w projekt
+## 🤝 Wkład w projekt
 
 Pull requesty i zgłoszenia błędów są mile widziane! Jeśli chcesz dodać obsługę nowego pada, otwórz Issue z:
 
@@ -94,10 +94,10 @@ Nazwą modelu,
 VID/PID,
 Zrzutem z detector.html (HEX + DEC).
 
-##📜 Licencja
+## 📜 Licencja
   Projekt udostępniany na licencji MIT — szczegóły w pliku LICENSE.
 
-##🙏 Podziękowania
+## 🙏 Podziękowania
     Three.js — silnik 3D
     WebHID API — obsługa pada
     Społeczność FPV za feedback i testy
