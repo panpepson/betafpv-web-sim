@@ -5,7 +5,7 @@
 Projekt napisany w całości w JavaScript (ES Modules) z wykorzystaniem **Three.js** do renderowania 3D. Nie wymaga instalacji — wystarczy przeglądarka oparta na Chromium.
 
 
-![](/img/zdjecie.jpg)
+![ Symulacja lotu ](./img/sym1.jpg)
 
 
 ## ✨ Funkcje
