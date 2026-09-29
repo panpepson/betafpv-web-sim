@@ -41,7 +41,7 @@ npx serve .
 
 # PHP
 php -S localhost:8000
-
+```
 
 🎮 Jak korzystać
 Krok 1/4 — Podłącz pad
