@@ -108,7 +108,7 @@ VID/PID,
 Zrzutem z detector.html (HEX + DEC).
 
 ## 📜 Licencja
-  Projekt udostępniany na licencji MIT — szczegóły w pliku LICENSE.
+  Projekt udostępniany na licencji MIT 
 
 ## 🙏 Podziękowania
    Three.js — silnik 3D
