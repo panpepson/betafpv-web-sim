@@ -5,6 +5,9 @@
 Projekt napisany w całości w JavaScript (ES Modules) z wykorzystaniem **Three.js** do renderowania 3D. Nie wymaga instalacji — wystarczy przeglądarka oparta na Chromium.
 
 
+!(/img/zdjecie.jpg)
+
+
 ## ✨ Funkcje
 
 - 🎮 **Bezpośrednia obsługa pada BetaFPV LiteRadio 2 SE** przez WebHID (bez sterowników).
@@ -59,6 +62,8 @@ PITCH — prawy drążek w górę/dół
 
 ROLL — prawy drążek w lewo/prawo
 
+Kamera - 3 pooziomy najlepiej użyć przełaczników SB i SC  
+
 Pary nieprzypisane (ustawione na ---) są ignorowane.
 
 
@@ -78,6 +83,12 @@ Throttle	Lewy ↑↓	Ciąg silników (góra/dół)
 Yaw	Lewy ←→	Obrót wokół osi pionowej
 Pitch	Prawy ↑↓	Pochylenie przód/tył
 Roll	Prawy ←→	Pochylenie na boki
+
+Klawiatura 
+
+P - Pauza 
+K - Kamera 
+Spacja - celownik
 
 
 ## ❌ Nie działa bezpośrednio

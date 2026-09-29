@@ -3,109 +3,9 @@
 <head>
 <meta charset="utf-8">
 <title>Symulator FPV — BetaFPV LiteRadio 2 SE</title>
-<style>
-  body { margin: 0; overflow: hidden; background: #000; font-family: monospace; color: #0f0; }
-
-  #overlay {
-    position: fixed; inset: 0; z-index: 100;
-    background: rgba(0,0,0,0.96);
-    display: flex; align-items: center; justify-content: center;
-    color: #0f0; overflow-y: auto;
-  }
-  #overlay.hidden { display: none; }
-
-  #panel {
-    max-width: 820px; width: 95%;
-    border: 2px solid #0f0; padding: 25px;
-    background: #0a0a0a; border-radius: 8px;
-    margin: 20px 0;
-  }
-  #panel h1 { color: #0ff; margin-top: 0; font-size: 22px; }
-  #panel h2 { color: #0ff; font-size: 17px; margin-top: 15px; }
-  #panel p, #panel li { line-height: 1.6; font-size: 14px; }
-  #panel button {
-    padding: 10px 20px; font-size: 15px; cursor: pointer;
-    background: #0f0; color: #000; border: none; border-radius: 6px;
-    font-family: monospace; font-weight: bold; margin: 4px;
-  }
-  #panel button:hover { background: #0c0; }
-  #panel button.secondary { background: #066; color: #0ff; }
-  #panel button.danger { background: #a00; color: #fff; }
-  #panel button:disabled { background: #333; color: #666; cursor: not-allowed; }
-
-  .step { display: none; }
-  .step.active { display: block; }
-
-  .axis-row {
-    display: flex; align-items: center; gap: 10px;
-    margin: 8px 0; padding: 6px 10px;
-    background: #111; border: 1px solid #333; border-radius: 4px;
-  }
-  .axis-label { width: 40px; color: #0ff; font-weight: bold; }
-  .axis-value { width: 60px; text-align: right; color: #ff0; font-size: 13px; }
-  .axis-bar {
-    flex: 1; height: 16px; background: #222;
-    border: 1px solid #444; border-radius: 3px;
-    position: relative; overflow: hidden;
-  }
-  .axis-bar-fill {
-    position: absolute; top: 0; height: 100%;
-    background: linear-gradient(90deg, #066, #0f0);
-    transition: left 0.05s linear, width 0.05s linear;
-  }
-  .axis-bar-center {
-    position: absolute; top: 0; left: 50%; width: 1px; height: 100%;
-    background: #666;
-  }
-  .axis-select {
-    padding: 5px; background: #000; color: #0f0;
-    border: 1px solid #0f0; font-family: monospace; font-size: 13px;
-    width: 130px;
-  }
-  .axis-status { width: 20px; text-align: center; }
-
-  .calib-box {
-    background: #111; border: 1px solid #0f0; padding: 20px;
-    border-radius: 6px; margin: 15px 0; text-align: center;
-  }
-  .calib-instruction { font-size: 18px; color: #ff0; margin-bottom: 10px; }
-  .calib-progress {
-    height: 24px; background: #222; border: 1px solid #444;
-    border-radius: 4px; overflow: hidden; margin: 10px 0;
-  }
-  .calib-progress > div {
-    height: 100%; background: #0f0; width: 0%;
-    transition: width 0.1s linear;
-  }
-  .calib-values { color: #0ff; font-size: 13px; margin-top: 10px; }
-
-  .world-card {
-    padding: 15px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: box-shadow 0.2s;
-    user-select: none;
-  }
-  .world-card:hover { box-shadow: 0 0 15px #fff3; }
-  .world-card h3 { margin-top: 0; font-size: 18px; }
-  .world-card p { font-size: 12px; color: #aaa; margin-bottom: 0; }
-
-  #hud {
-    position: absolute; top: 10px; left: 10px; color: #0f0;
-    background: rgba(0,0,0,0.5); padding: 10px; font-size: 14px;
-    border: 1px solid #0f0; pointer-events: none; line-height: 1.6;
-    z-index: 50;
-  }
-  #hud.hidden { display: none; }
-
-  #menuBtn {
-    position: absolute; top: 10px; right: 10px; z-index: 50;
-    padding: 8px 16px; background: #066; color: #0ff;
-    border: 1px solid #0ff; cursor: pointer; font-family: monospace;
-    font-size: 14px;
-  }
-  #menuBtn.hidden { display: none; }
-</style>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -116,8 +16,37 @@
   <div>Pitch:    <span id="pit">0.00</span></div>
   <div>Wysokość: <span id="alt">0.0</span> m</div>
   <div>Prędkość: <span id="spd">0.0</span> m/s</div>
+  <div>Status:   <span id="status">OK</span></div>
+  <div>Kamera:   <span id="camAngle">0°</span></div>
 </div>
+
 <button id="menuBtn" class="hidden">⬅ Menu</button>
+
+<!-- Celownik FPV — biały, kropka + małe znaczniki -->
+<div id="crosshair" class="hidden">
+  <svg width="80" height="80" viewBox="0 0 80 80">
+    <!-- Środkowa kropka -->
+    <circle cx="40" cy="40" r="2.5" fill="#fff"/>
+    <!-- Małe znaczniki na osiach (OSD drona) -->
+    <line x1="40" y1="26" x2="40" y2="31" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
+    <line x1="40" y1="49" x2="40" y2="54" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
+    <line x1="26" y1="40" x2="31" y2="40" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
+    <line x1="49" y1="40" x2="54" y2="40" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
+  </svg>
+</div>
+
+<!-- Wskaźnik pauzy -->
+<div id="pauseIndicator" class="hidden">
+  <div>⏸️ PAUZA</div>
+  <div style="font-size:13px; color:#aaa; margin-top:8px;">Naciśnij <b>P</b>, aby wznowić</div>
+</div>
+
+<!-- Banner rozłączenia pada -->
+<div id="reconnectBanner">
+  <div>⚠️ Pad rozłączony</div>
+  <div style="font-size:14px; margin-top:10px; color:#aaa;">Podłącz pada z powrotem i kliknij poniżej.</div>
+  <button id="btn-reconnect">🔄 Połącz ponownie</button>
+</div>
 
 <div id="overlay">
   <div id="panel">
@@ -126,13 +55,16 @@
     <div class="step active" id="step-start">
       <h1>🚁 Symulator FPV — BetaFPV LiteRadio 2 SE</h1>
       <p>Witaj! Zanim zaczniesz latać, musimy <b>zmapować Twój pad</b> i <b>skalibrować zakresy drążków</b>.</p>
-      <p><b>Uwaga:</b> to musi być robione <b>za każdym razem po odświeżeniu strony</b>. Twój pad przy każdym podłączeniu generuje sygnał na innych parach bajtów — dlatego nie da się zapisać mapowania na stałe. Kalibracja trwa ~20 sekund.</p>
+      <p><b>Uwaga:</b> mapowanie trzeba zrobić <b>za każdym razem po odświeżeniu strony</b>. Twój pad przy każdym podłączeniu generuje sygnał na innych parach bajtów — dlatego nie da się zapisać mapowania na stałe. <b>Kalibracja</b> natomiast zostanie zapamiętana w przeglądarce — dopóki pad pozostanie podłączony.</p>
       <p>Proces:</p>
       <ol>
         <li><b>Mapowanie:</b> ruszasz drążkami, program pokazuje które pary bajtów się ruszają, Ty przypisujesz je do funkcji drona.</li>
         <li><b>Kalibracja:</b> program prosi o ruszanie każdą funkcją — automatycznie mierzy min/max.</li>
         <li><b>Wybór planszy:</b> Łatwa / Średnia / Ekspert.</li>
       </ol>
+      <p class="hint">
+        🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD.
+      </p>
       <button id="btn-start">Rozpocznij mapowanie</button>
     </div>
 
@@ -149,9 +81,12 @@
       <h2>Krok 2/4 — Mapowanie osi</h2>
       <p><b>Ruszaj drążkami po kolei</b> (każdy w każdą stronę) i obserwuj, które paski się ruszają. Potem przypisz odpowiednie pary do funkcji drona.</p>
 
+      <!-- Schemat pada — pomaga początkującym zorientować się, który drążek jest który -->
+      <div class="pad-scheme" id="pad-scheme-mapping"></div>
+
       <div id="axis-list"></div>
 
-      <p style="color:#ff0; font-size:13px; margin-top:20px;">
+      <p class="hint">
         ⚠️ <b>Wskazówka:</b> jeśli jakaś para nie rusza się przy drążkach, ale rusza się przy przełączniku — zostaw ją jako <b>---</b>.
         Pary <b>nieprzypisane</b> będą <b>ignorowane</b> przez symulator.
       </p>
@@ -162,12 +97,17 @@
     <!-- KROK 4: Kalibracja -->
     <div class="step" id="step-calib">
       <h2>Krok 3/4 — Kalibracja zakresów</h2>
-      <p>Program poprosi Cię po kolei o ruszanie każdą funkcją. Ruszaj drążkiem <b>do oporu w obie strony</b> — program sam zmierzy zakres.</p>
+      <p>Program poprosi Cię po kolei o ruszanie każdą funkcją. Ruszaj drążkiem <b>do oporu w obie strony</b>. Kalibracja zaczyna się od <b>prawego drążka</b> (Pitch, Roll), a kończy na lewym (Throttle, Yaw).</p>
+
+      <!-- Schemat pada WYŻEJ — najpierw on, potem instrukcja -->
+      <div class="pad-scheme" id="pad-scheme"></div>
 
       <div class="calib-box">
         <div class="calib-instruction" id="calib-instruction">—</div>
         <div class="calib-progress"><div id="calib-progress-fill"></div></div>
+        <div class="calib-timer" id="calib-timer">—</div>
         <div class="calib-values" id="calib-values">—</div>
+        <div id="calib-error" class="calib-error"></div>
       </div>
     </div>
 
@@ -176,20 +116,24 @@
       <h2>Krok 4/4 — Wybierz planszę</h2>
       <p>Kalibracja zakończona. Wybierz poziom trudności:</p>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin: 20px 0;">
-        <div class="world-card" data-world="beginner" style="border:2px solid #0f0; background:#0a1a0a;">
-          <h3 style="color:#0f0;">🟢 ŁATWA</h3>
+      <div class="world-grid">
+        <div class="world-card" data-world="beginner">
+          <h3>🟢 ŁATWA</h3>
           <p>Nauka podstaw. Mało przeszkód, mała grawitacja, wolny lot. Idealna na start.</p>
         </div>
-        <div class="world-card" data-world="intermediate" style="border:2px solid #ff0; background:#1a1a0a;">
-          <h3 style="color:#ff0;">🟡 ŚREDNIA</h3>
+        <div class="world-card" data-world="intermediate">
+          <h3>🟡 ŚREDNIA</h3>
           <p>Trening. Więcej drzew i bramek, większa zwrotność i prędkość.</p>
         </div>
-        <div class="world-card" data-world="expert" style="border:2px solid #f00; background:#1a0a0a;">
-          <h3 style="color:#f00;">🔴 EKSPERT</h3>
-          <p>Pełny realizm FPV. Duża grawitacja, gęste przeszkody, wysoka prędkość i czułość.</p>
+        <div class="world-card" data-world="expert">
+          <h3>🔴 EKSPERT</h3>
+          <p>Realistyczna fizyka racera: przechył → siła pozioma, bezwładność kątowa, grawitacja 9.81.</p>
         </div>
       </div>
+
+      <p class="hint">
+        🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD.
+      </p>
 
       <button id="btn-recalibrate" class="danger">↻ Mapuj ponownie</button>
     </div>
