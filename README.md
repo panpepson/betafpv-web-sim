@@ -83,7 +83,9 @@ Roll	Prawy ←→	Pochylenie na boki
 ## ❌ Nie działa bezpośrednio
 
 Pady XInput (Xbox, DualShock/DualSense) — WebHID nie ma do nich dostępu ze względów bezpieczeństwa. Wymagana migracja na Gamepad API.
+
 Pad DJI RC-N1 (Mini 2 / Air 2 / Mini 3) — po podłączeniu przez USB nie jest rozpoznawany jako HID. Wymaga zewnętrznego konwertera (np. DJI_RC-N1_SIMULATOR_FLY_DCL) + Gamepad API.
+
 Aparatury Radiomaster Zorro / Pocket / TBS Tango 2 — teoretycznie kompatybilne po przełączeniu w tryb USB Joystick, ale wymagają zmiany VID/PID w kodzie.
 
 ## 🤝 Wkład w projekt
@@ -98,8 +100,8 @@ Zrzutem z detector.html (HEX + DEC).
   Projekt udostępniany na licencji MIT — szczegóły w pliku LICENSE.
 
 ## 🙏 Podziękowania
-    Three.js — silnik 3D
-    WebHID API — obsługa pada
-    Społeczność FPV za feedback i testy
+   Three.js — silnik 3D
+   WebHID API — obsługa pada
+   Społeczność FPV za feedback i testy
 
 ### Miłego latania! 🚁💨
