@@ -1,31 +1,40 @@
 {
+  "id": "/",
   "name": "BetaFPV Web Sim — Symulator FPV",
   "short_name": "BetaFPV Sim",
-  "description": "Przeglądarkowy symulator drona FPV sterowany padem BetaFPV LiteRadio 2 SE przez WebHID API.",
+  "description": "Przeglądarkowy symulator drona FPV sterowany padem BetaFPV LiteRadio 2 SE przez WebHID API. Three.js, realistyczna fizyka racera, 3 poziomy trudności.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "landscape",
   "background_color": "#000000",
   "theme_color": "#00ff00",
   "lang": "pl",
   "dir": "ltr",
-  "categories": ["games", "simulation", "sports"],
+  "categories": ["games", "simulation", "sports", "entertainment"],
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "img/icon-192.png",
+      "src": "/img/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "img/icon-512.png",
+      "src": "/img/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "img/icon-maskable-512.png",
+      "src": "/img/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/img/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -33,19 +42,34 @@
   ],
   "screenshots": [
     {
-      "src": "img/preview.png",
+      "src": "/img/preview.png",
       "sizes": "1200x630",
       "type": "image/png",
-      "form_factor": "wide"
+      "form_factor": "wide",
+      "label": "BetaFPV Web Sim — widok z lotu"
     }
   ],
   "shortcuts": [
     {
+      "name": "Tryb ŁATWY",
+      "short_name": "Łatwy",
+      "description": "Nauka podstaw — mało przeszkód, wolny lot",
+      "url": "/?world=beginner",
+      "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Tryb ŚREDNI",
+      "short_name": "Średni",
+      "description": "Trening — więcej drzew i bramek",
+      "url": "/?world=intermediate",
+      "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Tryb EKSPERT",
       "short_name": "Ekspert",
-      "description": "Od razu uruchom tryb wyścigowy",
+      "description": "Realistyczna fizyka racera — wyścig",
       "url": "/?world=expert",
-      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
