@@ -200,3 +200,24 @@ body {
   letter-spacing: 2px;
   fill: #0ff;
 }
+
+/* ─── Link do repozytorium w panelu startowym ─── */
+.repo-link {
+  background: #0a1a0a;
+  border: 1px solid #0f0;
+  border-radius: 6px;
+  padding: 12px 15px;
+  margin: 15px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.repo-link a {
+  color: #0ff;
+  text-decoration: none;
+  word-break: break-all;
+  font-weight: bold;
+}
+.repo-link a:hover {
+  color: #fff;
+  text-decoration: underline;
+}

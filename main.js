@@ -536,7 +536,7 @@ window.startSimulator = function(worldKey) {
     camera.position.copy(drone.pos);
     camera.rotation.order = 'YXZ';
     camera.rotation.y = drone.yaw;
-    camera.rotation.x = drone.pitch - cameraAngleRad;
+    camera.rotation.x = drone.pitch + cameraAngleRad;
     camera.rotation.z = drone.roll;
 
     const hudThr = document.getElementById('thr');

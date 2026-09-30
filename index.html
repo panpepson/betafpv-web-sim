@@ -2,9 +2,52 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8">
-<title>Symulator FPV — BetaFPV LiteRadio 2 SE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>BetaFPV Web Sim — Symulator FPV w przeglądarce</title>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SEO / PODSTAWOWE
+     ═══════════════════════════════════════════════════════════════ -->
+<meta name="description" content="Przeglądarkowy symulator drona FPV sterowany fizycznym padem BetaFPV LiteRadio 2 SE przez WebHID API. Three.js, 3 poziomy trudności, realistyczna fizyka racera.">
+<meta name="keywords" content="FPV, symulator, dron, BetaFPV, LiteRadio 2 SE, WebHID, Three.js, racer, przeglądarka, WebGL">
+<meta name="author" content="panpepson">
+<meta name="theme-color" content="#0f0">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     OPEN GRAPH — Facebook, LinkedIn, Discord, Slack
+     ═══════════════════════════════════════════════════════════════ -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BetaFPV Web Sim">
+<meta property="og:title" content="🚁 BetaFPV Web Sim — Symulator FPV w przeglądarce">
+<meta property="og:description" content="Przeglądarkowy symulator drona FPV sterowany padem BetaFPV LiteRadio 2 SE przez WebHID. Three.js, realistyczna fizyka, 3 poziomy trudności.">
+<meta property="og:url" content="https://github.com/panpepson/betafpv-web-sim">
+<meta property="og:image" content="https://raw.githubusercontent.com/panpepson/betafpv-web-sim/main/img/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="BetaFPV Web Sim — symulator FPV w przeglądarce">
+<meta property="og:locale" content="pl_PL">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TWITTER CARD
+     ═══════════════════════════════════════════════════════════════ -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@panpepson">
+<meta name="twitter:creator" content="@panpepson">
+<meta name="twitter:title" content="🚁 BetaFPV Web Sim — Symulator FPV w przeglądarce">
+<meta name="twitter:description" content="Przeglądarkowy symulator drona FPV sterowany padem BetaFPV LiteRadio 2 SE przez WebHID. Three.js, realistyczna fizyka racera.">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/panpepson/betafpv-web-sim/main/img/preview.png">
+<meta name="twitter:image:alt" content="BetaFPV Web Sim — symulator FPV w przeglądarce">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FAVICON
+     ═══════════════════════════════════════════════════════════════ -->
 <link rel="icon" type="image/x-icon" href="favicon.ico">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="favicon.ico">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STYLES
+     ═══════════════════════════════════════════════════════════════ -->
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,15 +62,12 @@
   <div>Status:   <span id="status">OK</span></div>
   <div>Kamera:   <span id="camAngle">0°</span></div>
 </div>
-
 <button id="menuBtn" class="hidden">⬅ Menu</button>
 
 <!-- Celownik FPV — biały, kropka + małe znaczniki -->
 <div id="crosshair" class="hidden">
   <svg width="80" height="80" viewBox="0 0 80 80">
-    <!-- Środkowa kropka -->
     <circle cx="40" cy="40" r="2.5" fill="#fff"/>
-    <!-- Małe znaczniki na osiach (OSD drona) -->
     <line x1="40" y1="26" x2="40" y2="31" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
     <line x1="40" y1="49" x2="40" y2="54" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
     <line x1="26" y1="40" x2="31" y2="40" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
@@ -53,8 +93,16 @@
 
     <!-- KROK 1: Start -->
     <div class="step active" id="step-start">
-      <h1>🚁 Symulator FPV — BetaFPV LiteRadio 2 SE</h1>
+      <h1>🚁 BetaFPV Web Sim</h1>
       <p>Witaj! Zanim zaczniesz latać, musimy <b>zmapować Twój pad</b> i <b>skalibrować zakresy drążków</b>.</p>
+
+      <p class="repo-link">
+        📦 <b>Repozytorium projektu:</b><br>
+        <a href="https://github.com/panpepson/betafpv-web-sim" target="_blank" rel="noopener noreferrer">
+          https://github.com/panpepson/betafpv-web-sim
+        </a>
+      </p>
+
       <p><b>Uwaga:</b> mapowanie trzeba zrobić <b>za każdym razem po odświeżeniu strony</b>. Twój pad przy każdym podłączeniu generuje sygnał na innych parach bajtów — dlatego nie da się zapisać mapowania na stałe. <b>Kalibracja</b> natomiast zostanie zapamiętana w przeglądarce — dopóki pad pozostanie podłączony.</p>
       <p>Proces:</p>
       <ol>
@@ -63,7 +111,7 @@
         <li><b>Wybór planszy:</b> Łatwa / Średnia / Ekspert.</li>
       </ol>
       <p class="hint">
-        🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD.
+        🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD, <b>K</b> — kąt kamery.
       </p>
       <button id="btn-start">Rozpocznij mapowanie</button>
     </div>
@@ -81,14 +129,14 @@
       <h2>Krok 2/4 — Mapowanie osi</h2>
       <p><b>Ruszaj drążkami po kolei</b> (każdy w każdą stronę) i obserwuj, które paski się ruszają. Potem przypisz odpowiednie pary do funkcji drona.</p>
 
-      <!-- Schemat pada — pomaga początkującym zorientować się, który drążek jest który -->
       <div class="pad-scheme" id="pad-scheme-mapping"></div>
 
       <div id="axis-list"></div>
 
       <p class="hint">
         ⚠️ <b>Wskazówka:</b> jeśli jakaś para nie rusza się przy drążkach, ale rusza się przy przełączniku — zostaw ją jako <b>---</b>.
-        Pary <b>nieprzypisane</b> będą <b>ignorowane</b> przez symulator.
+        Pary <b>nieprzypisane</b> będą <b>ignorowane</b> przez symulator.<br>
+        📷 <b>CAMERA</b> — przypisz do przełącznika 3-pozycyjnego (SA/SB/SC), żeby zmieniać kąt kamery FPV.
       </p>
 
       <button id="btn-mapping-next">Dalej → Kalibracja zakresów</button>
@@ -99,7 +147,6 @@
       <h2>Krok 3/4 — Kalibracja zakresów</h2>
       <p>Program poprosi Cię po kolei o ruszanie każdą funkcją. Ruszaj drążkiem <b>do oporu w obie strony</b>. Kalibracja zaczyna się od <b>prawego drążka</b> (Pitch, Roll), a kończy na lewym (Throttle, Yaw).</p>
 
-      <!-- Schemat pada WYŻEJ — najpierw on, potem instrukcja -->
       <div class="pad-scheme" id="pad-scheme"></div>
 
       <div class="calib-box">
@@ -132,7 +179,7 @@
       </div>
 
       <p class="hint">
-        🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD.
+        🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD, <b>K</b> — kąt kamery.
       </p>
 
       <button id="btn-recalibrate" class="danger">↻ Mapuj ponownie</button>
