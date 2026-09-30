@@ -6,46 +6,36 @@
 
 <title>BetaFPV Web Sim — FPV Simulator in Your Browser</title>
 
-<!-- SEO -->
-<meta name="description" content="Browser-based FPV drone simulator controlled with a physical BetaFPV LiteRadio 2 SE radio via WebHID API. Three.js, realistic racer physics, 3 difficulty levels.">
-<meta name="keywords" content="FPV, simulator, drone, BetaFPV, LiteRadio 2 SE, WebHID, Three.js, racer, browser, WebGL">
+<meta name="description" content="Browser-based FPV drone simulator controlled with a physical BetaFPV LiteRadio 2 SE radio via WebHID API.">
 <meta name="author" content="panpepson">
 <meta name="theme-color" content="#0f0">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="BetaFPV Web Sim">
-<meta property="og:title" content="BetaFPV Web Sim — FPV Simulator">
+<meta property="og:title" content="🚁 BetaFPV Web Sim — FPV Simulator">
 <meta property="og:description" content="Browser-based FPV drone simulator with realistic racer physics.">
 <meta property="og:url" content="https://betafpv.vercel.app/">
-<meta property="og:image" content="https://betafpv.vercel.app/img/preview.jpg">
+<meta property="og:image" content="https://betafpv.vercel.app/img/preview.png">
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="pl_PL">
 
-<!-- Hreflang -->
 <link rel="alternate" hreflang="en" href="https://betafpv.vercel.app/en">
 <link rel="alternate" hreflang="pl" href="https://betafpv.vercel.app/pl">
 <link rel="alternate" hreflang="x-default" href="https://betafpv.vercel.app/">
 
-<!-- Twitter Card -->
+<!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:site" content="@devPepson">
-<meta name="twitter:creator" content="@devPepson">
-<meta name="twitter:title" content="BetaFPV Web Sim — FPV Simulator">
+<meta name="twitter:site" content="@panpepson">
+<meta name="twitter:creator" content="@panpepson">
+<meta name="twitter:title" content="🚁 BetaFPV Web Sim — FPV Simulator">
 <meta name="twitter:description" content="Browser-based FPV drone simulator with realistic racer physics.">
-<meta name="twitter:image" content="https://betafpv.vercel.app/img/preview.jpg">
+<meta name="twitter:image" content="https://betafpv.vercel.app/img/preview.png">
 
-<!-- Favicon -->
 <link rel="icon" type="image/x-icon" href="favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="favicon.ico">
-
-<!-- Styles -->
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- Przycisk zmiany języka -->
-<button id="langToggle" class="lang-toggle" title="Change language / Zmień język">🇵🇱 PL</button>
 
 <div id="hud" class="hidden">
   <div><span data-i18n="hud.throttle">Throttle:</span> <span id="thr">0.00</span></div>
@@ -59,7 +49,6 @@
 </div>
 <button id="menuBtn" class="hidden" data-i18n="menu">⬅ Menu</button>
 
-<!-- Celownik -->
 <div id="crosshair" class="hidden">
   <svg width="80" height="80" viewBox="0 0 80 80">
     <circle cx="40" cy="40" r="2.5" fill="#fff"/>
@@ -70,13 +59,11 @@
   </svg>
 </div>
 
-<!-- Wskaźnik pauzy -->
 <div id="pauseIndicator" class="hidden">
   <div data-i18n="pause.title">⏸️ PAUSED</div>
   <div style="font-size:13px; color:#aaa; margin-top:8px;" data-i18n-html="pause.hint">Press <b>P</b> to resume</div>
 </div>
 
-<!-- Banner rozłączenia -->
 <div id="reconnectBanner">
   <div data-i18n="disconnect.title">⚠️ Radio disconnected</div>
   <div style="font-size:14px; margin-top:10px; color:#aaa;" data-i18n="disconnect.hint">Connect the radio back and click below.</div>
@@ -85,6 +72,25 @@
 
 <div id="overlay">
   <div id="panel">
+
+    <!-- ─── Przełącznik języka — flagi w panelu ─── -->
+    <div class="lang-switcher">
+      <button class="lang-flag" data-lang="pl" title="Polski">
+        <svg width="28" height="20" viewBox="0 0 28 20">
+          <rect width="28" height="10" fill="#ffffff"/>
+          <rect y="10" width="28" height="10" fill="#dc143c"/>
+        </svg>
+      </button>
+      <button class="lang-flag" data-lang="en" title="English">
+        <svg width="28" height="20" viewBox="0 0 28 20">
+          <rect width="28" height="20" fill="#012169"/>
+          <path d="M0,0 L28,20 M28,0 L0,20" stroke="#ffffff" stroke-width="4"/>
+          <path d="M0,0 L28,20 M28,0 L0,20" stroke="#C8102E" stroke-width="2"/>
+          <path d="M14,0 V20 M0,10 H28" stroke="#ffffff" stroke-width="6"/>
+          <path d="M14,0 V20 M0,10 H28" stroke="#C8102E" stroke-width="3"/>
+        </svg>
+      </button>
+    </div>
 
     <!-- KROK 1: Start -->
     <div class="step active" id="step-start">
@@ -109,7 +115,6 @@
       <button id="btn-start" data-i18n="start.btn_start">Start mapping</button>
     </div>
 
-    <!-- KROK 2: Podłącz pad -->
     <div class="step" id="step-connect">
       <h2 data-i18n="connect.step">Step 1/4 — Connect radio</h2>
       <p data-i18n-html="connect.instruction">...</p>
@@ -117,27 +122,19 @@
       <button id="btn-connect" data-i18n="connect.btn_connect">Connect radio</button>
     </div>
 
-    <!-- KROK 3: Mapowanie -->
     <div class="step" id="step-mapping">
       <h2 data-i18n="mapping.step">Step 2/4 — Axis mapping</h2>
       <p data-i18n-html="mapping.instruction">...</p>
-
       <div class="pad-scheme" id="pad-scheme-mapping"></div>
-
       <div id="axis-list"></div>
-
       <p class="hint" data-i18n-html="mapping.hint">...</p>
-
       <button id="btn-mapping-next" data-i18n="mapping.btn_next">Next → Range calibration</button>
     </div>
 
-    <!-- KROK 4: Kalibracja -->
     <div class="step" id="step-calib">
       <h2 data-i18n="calib.step">Step 3/4 — Range calibration</h2>
       <p data-i18n-html="calib.instruction">...</p>
-
       <div class="pad-scheme" id="pad-scheme"></div>
-
       <div class="calib-box">
         <div class="calib-instruction" id="calib-instruction">—</div>
         <div class="calib-progress"><div id="calib-progress-fill"></div></div>
@@ -147,11 +144,9 @@
       </div>
     </div>
 
-    <!-- KROK 5: Wybór planszy -->
     <div class="step" id="step-done">
       <h2 data-i18n="world.step">Step 4/4 — Choose world</h2>
       <p data-i18n="world.instruction">Calibration complete. Choose difficulty level:</p>
-
       <div class="world-grid">
         <div class="world-card" data-world="beginner">
           <h3 data-i18n="world.beginner_title">🟢 EASY</h3>
@@ -166,9 +161,7 @@
           <p data-i18n="world.expert_desc">Realistic racer physics...</p>
         </div>
       </div>
-
       <p class="hint" data-i18n-html="start.shortcuts">...</p>
-
       <button id="btn-recalibrate" class="danger" data-i18n="world.btn_recalibrate">↻ Remap</button>
     </div>
 
@@ -184,18 +177,23 @@
 </script>
 
 <script type="module">
-  import { initI18n, toggleLang } from './i18n/index.js';
+  import { initI18n, setLang } from './i18n/index.js';
 
-  // Inicjalizacja i18n zanim załadują się main.js i calibration.js
+  // 1. Inicjalizacja i18n — CZEKAJ aż się skończy
   await initI18n();
 
-  // Przełącznik języka
-  document.getElementById('langToggle').addEventListener('click', () => {
-    toggleLang();
+  // 2. Flagi — zmiana języka
+  document.querySelectorAll('.lang-flag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const lang = btn.getAttribute('data-lang');
+      setLang(lang);
+    });
   });
+
+  // 3. Dopiero teraz załaduj main.js i calibration.js
+  await import('./main.js');
+  await import('./calibration.js');
 </script>
 
-<script type="module" src="main.js"></script>
-<script type="module" src="calibration.js"></script>
 </body>
 </html>
