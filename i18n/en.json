@@ -1,0 +1,92 @@
+{
+  "lang": "en",
+  "lang_name": "English",
+  "meta": {
+    "title": "BetaFPV Web Sim — FPV Simulator in Your Browser",
+    "description": "Browser-based FPV drone simulator controlled with a physical BetaFPV LiteRadio 2 SE radio via WebHID API. Three.js, realistic racer physics, 3 difficulty levels."
+  },
+  "start": {
+    "title": "🚁 BetaFPV Web Sim",
+    "welcome": "Welcome! Before you start flying, we need to <b>map your radio</b> and <b>calibrate the stick ranges</b>.",
+    "repo_label": "📦 <b>Project repository:</b>",
+    "warning": "<b>Note:</b> mapping must be done <b>every time after refreshing the page</b>. Your radio generates signals on different byte pairs each time it connects — that's why mapping cannot be saved permanently. <b>Calibration</b> is remembered in the browser — as long as the radio stays connected.",
+    "process_title": "Process:",
+    "process_1": "<b>Mapping:</b> move the sticks, the program shows which byte pairs move, you assign them to drone functions.",
+    "process_2": "<b>Calibration:</b> the program asks you to move each function — it automatically measures min/max.",
+    "process_3": "<b>World selection:</b> Easy / Medium / Expert.",
+    "shortcuts": "🎮 <b>In-flight shortcuts:</b> <b>P</b> — pause, <b>Space</b> — OSD crosshair, <b>K</b> — camera angle.",
+    "btn_start": "Start mapping"
+  },
+  "connect": {
+    "step": "Step 1/4 — Connect radio",
+    "instruction": "Click below and select <b>BETAFPV Joystick</b> from the list.",
+    "status_waiting": "⏳ Waiting...",
+    "status_connecting": "⏳ Connecting...",
+    "status_connected": "✅ Connected: ",
+    "status_failed": "❌ Failed to connect.",
+    "btn_connect": "Connect radio"
+  },
+  "mapping": {
+    "step": "Step 2/4 — Axis mapping",
+    "instruction": "<b>Move the sticks one by one</b> (each in every direction) and observe which bars move. Then assign the appropriate pairs to drone functions.",
+    "hint": "⚠️ <b>Tip:</b> if a pair doesn't move with the sticks but moves with a switch — leave it as <b>---</b>. Unassigned pairs are <b>ignored</b> by the simulator.<br>📷 <b>CAMERA</b> — assign to a 3-position switch (SA/SB/SC) to change the FPV camera angle.",
+    "btn_next": "Next → Range calibration"
+  },
+  "calib": {
+    "step": "Step 3/4 — Range calibration",
+    "instruction": "The program will ask you to move each function in turn. Move the stick <b>to the limit in both directions</b>. Calibration starts with the <b>right stick</b> (Pitch, Roll), then the left (Throttle, Yaw).",
+    "throttle": "Move the <b>LEFT stick UP and DOWN</b> — several times to the limit",
+    "yaw": "Move the <b>LEFT stick LEFT and RIGHT</b> — several times to the limit",
+    "pitch": "Move the <b>RIGHT stick UP and DOWN</b> — several times to the limit",
+    "roll": "Move the <b>RIGHT stick LEFT and RIGHT</b> — several times to the limit",
+    "moving": "Move the stick...",
+    "remaining": "Remaining: ",
+    "seconds": " s",
+    "range_too_small": "❌ <b>Range too small ({range} &lt; {min}).</b><br>Did you really move <b>{fn}</b>?<br>Try again — move the stick <b>to the limit in both directions</b>.<br>",
+    "btn_retry": "↻ Try again"
+  },
+  "world": {
+    "step": "Step 4/4 — Choose world",
+    "instruction": "Calibration complete. Choose difficulty level:",
+    "beginner_title": "🟢 EASY",
+    "beginner_desc": "Learn the basics. Few obstacles, low gravity, slow flight. Perfect for start.",
+    "intermediate_title": "🟡 MEDIUM",
+    "intermediate_desc": "Training. More trees and gates, higher agility and speed.",
+    "expert_title": "🔴 EXPERT",
+    "expert_desc": "Realistic racer physics: tilt → horizontal force, angular inertia, 9.81 gravity.",
+    "btn_recalibrate": "↻ Remap"
+  },
+  "hud": {
+    "throttle": "Throttle:",
+    "yaw": "Yaw:",
+    "roll": "Roll:",
+    "pitch": "Pitch:",
+    "altitude": "Altitude:",
+    "speed": "Speed:",
+    "status": "Status:",
+    "camera": "Camera:",
+    "ok": "OK",
+    "disconnected": "DISCONNECTED"
+  },
+  "pause": {
+    "title": "⏸️ PAUSED",
+    "hint": "Press <b>P</b> to resume"
+  },
+  "disconnect": {
+    "title": "⚠️ Radio disconnected",
+    "hint": "Connect the radio back and click below.",
+    "btn_reconnect": "🔄 Reconnect"
+  },
+  "menu": "⬅ Menu",
+  "alerts": {
+    "missing_functions": "❌ Missing functions: {list}\n\nGo back to mapping and assign all 4 functions (THROTTLE, YAW, PITCH, ROLL).",
+    "missing_4": "❌ Assign at least 4 functions (THROTTLE, YAW, PITCH, ROLL).\nCurrently: {count}",
+    "sim_not_ready": "❌ Simulator not loaded within 5 seconds.\n\nCheck the console (F12) and refresh the page."
+  },
+  "pad_scheme": {
+    "mode": "MODE 2",
+    "left_stick": "LEFT",
+    "right_stick": "RIGHT",
+    "footer": "SA = FPV camera angle (0° / 20° / 35°)"
+  }
+}

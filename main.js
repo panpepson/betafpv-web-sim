@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { t } from './i18n/index.js';
 
 // ================================================================
 // KONFIGURACJA PLANSZ
@@ -145,20 +146,13 @@ const WORLDS = {
   }
 };
 
-// ================================================================
-// STAN GLOBALNY
-// ================================================================
 let simState = null;
 
-// ================================================================
-// SYMULATOR
-// ================================================================
 window.startSimulator = function(worldKey) {
   const cfg = WORLDS[worldKey] || WORLDS.beginner;
   console.log('🚁 Start symulatora —', cfg.name, '| fizyka:', cfg.physicsMode, '| kamera:', cfg.cameraAngle + '°');
 
   if (simState) {
-    console.log('♻️ Zatrzymuję poprzedni symulator...');
     window.stopSimulator();
   }
 
@@ -187,7 +181,7 @@ window.startSimulator = function(worldKey) {
     }
   };
 
-  // --- Światło ---
+  // ─── Światło ───
   const sun = new THREE.DirectionalLight(0xffffff, 1.2);
   sun.position.set(80, 150, 60);
   sun.castShadow = true;
@@ -201,7 +195,7 @@ window.startSimulator = function(worldKey) {
   scene.add(sun);
   scene.add(new THREE.AmbientLight(0x8899aa, 0.7));
 
-  // --- Niebo ---
+  // ─── Niebo ───
   const skyGeo = new THREE.SphereGeometry(800, 32, 16);
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -217,7 +211,7 @@ window.startSimulator = function(worldKey) {
   scene.add(skyMesh);
   track(skyMesh);
 
-  // --- Ziemia ---
+  // ─── Ziemia ───
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(2000, 2000),
     new THREE.MeshLambertMaterial({ color: 0x3a7d2c })
@@ -234,7 +228,7 @@ window.startSimulator = function(worldKey) {
   scene.add(grid);
   track(grid);
 
-  // --- Górki ---
+  // ─── Górki ───
   cfg.hills.forEach(h => {
     const hillGeo = new THREE.SphereGeometry(h[3], 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
     const hill = new THREE.Mesh(hillGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
@@ -246,7 +240,7 @@ window.startSimulator = function(worldKey) {
     track(hill);
   });
 
-  // --- Woda ---
+  // ─── Woda ───
   if (cfg.water) {
     const water = new THREE.Mesh(
       new THREE.PlaneGeometry(cfg.water.w, cfg.water.d, 20, 20),
@@ -259,7 +253,7 @@ window.startSimulator = function(worldKey) {
     track(water);
   }
 
-  // --- Drzewa ---
+  // ─── Drzewa ───
   function makeTree(x, z, scale) {
     const group = new THREE.Group();
     const trunkGeo = new THREE.CylinderGeometry(0.5 * scale, 0.7 * scale, 4 * scale, 8);
@@ -288,7 +282,7 @@ window.startSimulator = function(worldKey) {
   }
   cfg.trees.forEach(t => scene.add(makeTree(t[0], t[1], t[2])));
 
-  // --- Przeszkody ---
+  // ─── Przeszkody ───
   function makeBox(x, z, w, h, d, color) {
     const geo = new THREE.BoxGeometry(w, h, d);
     const mat = new THREE.MeshLambertMaterial({ color });
@@ -301,7 +295,7 @@ window.startSimulator = function(worldKey) {
   }
   cfg.boxes.forEach(b => makeBox(b[0], b[1], b[2], b[3], b[4], b[5]));
 
-  // --- Bramki ---
+  // ─── Bramki ───
   function makeGate(x, y, z, rotY) {
     const g = new THREE.Group();
     const geo = new THREE.TorusGeometry(3, 0.3, 8, 24);
@@ -316,9 +310,7 @@ window.startSimulator = function(worldKey) {
   }
   cfg.gates.forEach(g => makeGate(g[0], g[1], g[2], g[3]));
 
-  // ================================================================
-  // DRON
-  // ================================================================
+  // ─── DRON ───
   const drone = {
     pos: new THREE.Vector3(cfg.droneStart.x, cfg.droneStart.y, cfg.droneStart.z),
     vel: new THREE.Vector3(0, 0, 0),
@@ -355,35 +347,28 @@ window.startSimulator = function(worldKey) {
   let pausedByDisconnect = false;
   let crosshairVisible = false;
 
-  // ─── Kąt kamery ───
   let cameraAngleDeg = cfg.cameraAngle || 0;
   let cameraAngleRad = cameraAngleDeg * Math.PI / 180;
 
   const camEl = document.getElementById('camAngle');
   if (camEl) camEl.textContent = cameraAngleDeg + '°';
 
-  // Reakcja na zmianę kąta z calibration.js (klawisz K)
   window.onCameraAngleChange = (angleDeg) => {
     cameraAngleDeg = angleDeg;
     cameraAngleRad = angleDeg * Math.PI / 180;
-    console.log(`📷 Kamera (cykl): ${angleDeg}°`);
   };
 
-  // Ustawienie kąta bezpośrednio (z przełącznika CAMERA)
   window.setCameraAngle = (angleDeg) => {
     cameraAngleDeg = angleDeg;
     cameraAngleRad = angleDeg * Math.PI / 180;
-    console.log(`📷 Kamera (przełącznik): ${angleDeg}°`);
   };
 
   window.padData.onDisconnect = () => {
     pausedByDisconnect = true;
-    console.log('⏸️ Symulator wstrzymany — pad rozłączony');
   };
   window.padData.onReconnect = () => {
     pausedByDisconnect = false;
     prevTime = performance.now();
-    console.log('▶️ Symulator wznowiony');
   };
 
   const onKeyDown = (e) => {
@@ -393,7 +378,6 @@ window.startSimulator = function(worldKey) {
       const pauseEl = document.getElementById('pauseIndicator');
       if (pauseEl) pauseEl.classList.toggle('hidden', !pausedByKey);
       if (!pausedByKey) prevTime = performance.now();
-      console.log(pausedByKey ? '⏸️ PAUZA (P)' : '▶️ WZNOWIONO (P)');
       return;
     }
     if (e.code === 'Space') {
@@ -401,7 +385,6 @@ window.startSimulator = function(worldKey) {
       crosshairVisible = !crosshairVisible;
       const ch = document.getElementById('crosshair');
       if (ch) ch.classList.toggle('hidden', !crosshairVisible);
-      console.log(crosshairVisible ? '🎯 Celownik ON' : '🎯 Celownik OFF');
       return;
     }
     if (e.code === 'KeyK' || e.key === 'k' || e.key === 'K') {
@@ -413,9 +396,6 @@ window.startSimulator = function(worldKey) {
 
   addEventListener('keydown', onKeyDown);
 
-  // ================================================================
-  // FIZYKA — ARCADE
-  // ================================================================
   function stepPhysicsArcade(dt, inp) {
     const throttle01 = (inp.throttle + 1) / 2;
     const thrust = throttle01 * PHYS.thrustFactor;
@@ -435,9 +415,6 @@ window.startSimulator = function(worldKey) {
     drone.roll  =  inp.roll  * PHYS.visualTilt;
   }
 
-  // ================================================================
-  // FIZYKA — REALISTIC
-  // ================================================================
   function stepPhysicsRealistic(dt, inp) {
     drone.targetPitch = -inp.pitch * PHYS.maxTiltAngle;
     drone.targetRoll  =  inp.roll  * PHYS.maxTiltAngle;
@@ -489,9 +466,6 @@ window.startSimulator = function(worldKey) {
     }
   }
 
-  // ================================================================
-  // GŁÓWNA PĘTLA
-  // ================================================================
   function animate() {
     rafId = requestAnimationFrame(animate);
 
@@ -563,26 +537,15 @@ window.startSimulator = function(worldKey) {
   addEventListener('resize', onResize);
 
   simState = {
-    renderer,
-    scene,
-    camera,
-    disposables,
-    onResize,
-    onKeyDown,
-    getRafId: () => rafId,
-    getPaused: () => pausedByKey || pausedByDisconnect
+    renderer, scene, camera, disposables, onResize, onKeyDown,
+    getRafId: () => rafId
   };
 
   animate();
 };
 
-// ================================================================
-// ZATRZYMANIE SYMULATORA
-// ================================================================
 window.stopSimulator = function() {
   if (!simState) return;
-
-  console.log('🛑 Zatrzymuję symulator...');
 
   const rafId = simState.getRafId();
   if (rafId !== null) cancelAnimationFrame(rafId);
@@ -608,7 +571,6 @@ window.stopSimulator = function() {
 
   simState = null;
 
-  // Wyczyść callbacki kamery
   window.onCameraAngleChange = null;
   window.setCameraAngle = null;
 
@@ -616,14 +578,12 @@ window.stopSimulator = function() {
     const banner = document.getElementById('reconnectBanner');
     if (banner) banner.classList.add('show');
     const statusEl = document.getElementById('status');
-    if (statusEl) statusEl.textContent = 'ROZŁĄCZONY';
+    if (statusEl) statusEl.textContent = t('hud.disconnected');
   };
   window.padData.onReconnect = () => {
     const banner = document.getElementById('reconnectBanner');
     if (banner) banner.classList.remove('show');
     const statusEl = document.getElementById('status');
-    if (statusEl) statusEl.textContent = 'OK';
+    if (statusEl) statusEl.textContent = t('hud.ok');
   };
-
-  console.log('✅ Symulator zatrzymany');
 };

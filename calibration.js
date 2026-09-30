@@ -2,6 +2,8 @@
 // KREATOR MAPOWANIA + KALIBRACJA + WYBÓR PLANSZY
 // ================================================================
 
+import { t, getLang } from './i18n/index.js';
+
 const VENDOR_ID  = 0x0483;
 const PRODUCT_ID = 0x5750;
 
@@ -11,19 +13,12 @@ const FUNCTIONS = [
   { key: 'yaw',      label: 'YAW' },
   { key: 'pitch',    label: 'PITCH' },
   { key: 'roll',     label: 'ROLL' },
-  { key: 'camera',   label: 'CAMERA (kąt kamery)' },
+  { key: 'camera',   label: 'CAMERA' },
   { key: 'flip',     label: 'FLIP' },
   { key: 'reset',    label: 'RESET' }
 ];
 
 const CALIB_ORDER = ['pitch', 'roll', 'throttle', 'yaw'];
-
-const CALIB_INSTR = {
-  pitch:    'Rusz <b>PRAWYM drążkiem w GÓRĘ i w DÓŁ</b> — kilka razy do oporu',
-  roll:     'Rusz <b>PRAWYM drążkiem w LEWO i w PRAWO</b> — kilka razy do oporu',
-  throttle: 'Rusz <b>LEWYM drążkiem w GÓRĘ i w DÓŁ</b> — kilka razy do oporu',
-  yaw:      'Rusz <b>LEWYM drążkiem w LEWO i w PRAWO</b> — kilka razy do oporu'
-};
 
 const STICK_FOR_FN = {
   pitch:    'right',
@@ -108,7 +103,6 @@ function onDeviceDisconnect(e) {
     try {
       localStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem(SESSION_PAD_KEY);
-      console.log('🗑️ Kalibracja wygasła — pad rozłączony');
     } catch (err) {}
 
     if (window.padData.onDisconnect) window.padData.onDisconnect();
@@ -149,7 +143,6 @@ function onInputReport(e) {
     if (cameraPairIdx >= 0) {
       const raw = window.padData.rawPairs[cameraPairIdx];
 
-      // 3 strefy: <680 → -1 (0°), 680..1360 → 0 (20°), >1360 → +1 (35°)
       let state;
       if (raw < 680)        state = -1;
       else if (raw < 1360)  state =  0;
@@ -160,11 +153,8 @@ function onInputReport(e) {
 
         const angleMap = { '-1': 0, '0': 20, '1': 35 };
         const angle = angleMap[String(state)];
-        console.log(`📷 CAMERA: raw=${raw} state=${state} → ${angle}°`);
 
-        if (window.setCameraAngle) {
-          window.setCameraAngle(angle);
-        }
+        if (window.setCameraAngle) window.setCameraAngle(angle);
 
         const camEl = document.getElementById('camAngle');
         if (camEl) camEl.textContent = angle + '°';
@@ -210,7 +200,7 @@ function showOverlay() {
 }
 
 // ================================================================
-// SCHEMAT PADA (SVG) — THROTTLE / PITCH na górze, YAW / ROLL po bokach
+// SCHEMAT PADA (SVG)
 // ================================================================
 function renderPadSchemeInto(containerId, highlight) {
   const container = document.getElementById(containerId);
@@ -226,6 +216,11 @@ function renderPadSchemeInto(containerId, highlight) {
   const lTxt = leftActive ? '#ff0' : '#888';
   const rTxt = rightActive ? '#ff0' : '#888';
 
+  const leftLabel = t('pad_scheme.left_stick');
+  const rightLabel = t('pad_scheme.right_stick');
+  const modeText = t('pad_scheme.mode');
+  const footerText = t('pad_scheme.footer');
+
   container.innerHTML = `
     <svg viewBox="0 0 460 300" width="520" height="340">
       <rect x="10" y="10" width="440" height="280" rx="20"
@@ -233,7 +228,7 @@ function renderPadSchemeInto(containerId, highlight) {
 
       <text x="230" y="42" text-anchor="middle"
             font-family="monospace" font-size="20" font-weight="bold"
-            fill="#0ff" letter-spacing="3">MODE 2</text>
+            fill="#0ff" letter-spacing="3">${modeText}</text>
 
       <text x="230" y="62" text-anchor="middle"
             font-family="monospace" font-size="11"
@@ -273,7 +268,7 @@ function renderPadSchemeInto(containerId, highlight) {
 
       <text x="230" y="278" text-anchor="middle"
             font-family="monospace" font-size="10"
-            fill="#0f0" opacity="0.5">SA = kąt kamery FPV (0° / 20° / 35°)</text>
+            fill="#0f0" opacity="0.5">${footerText}</text>
     </svg>
   `;
 }
@@ -323,7 +318,6 @@ function initMappingUI() {
   }
 
   renderPadSchemeInto('pad-scheme-mapping', null);
-
   window.padData.onRawUpdate = updateAxisBars;
   updateAxisBars();
 }
@@ -377,8 +371,7 @@ function startCalibration() {
 
   const missing = CALIB_ORDER.filter(fn => !(fn in assignedPairs));
   if (missing.length > 0) {
-    alert('❌ Nie przypisano funkcji: ' + missing.join(', ') +
-          '\n\nWróć do mapowania i przypisz wszystkie 4 funkcje (THROTTLE, YAW, PITCH, ROLL).');
+    alert(t('alerts.missing_functions', { list: missing.join(', ') }));
     return;
   }
 
@@ -412,11 +405,11 @@ function nextCalibrationStep() {
   calibState.max = -1;
 
   const instrEl = document.getElementById('calib-instruction');
-  if (instrEl) instrEl.innerHTML = CALIB_INSTR[calibState.current];
+  if (instrEl) instrEl.innerHTML = t(`calib.${calibState.current}`);
   const fillEl = document.getElementById('calib-progress-fill');
   if (fillEl) fillEl.style.width = '0%';
   const valuesEl = document.getElementById('calib-values');
-  if (valuesEl) valuesEl.textContent = 'Ruszaj drążkiem...';
+  if (valuesEl) valuesEl.textContent = t('calib.moving');
   const errEl = document.getElementById('calib-error');
   if (errEl) errEl.style.display = 'none';
 
@@ -440,12 +433,12 @@ function updateCalibration() {
   if (fillEl) fillEl.style.width = pct + '%';
 
   const timerEl = document.getElementById('calib-timer');
-  if (timerEl) timerEl.textContent = `Pozostało: ${(remaining / 1000).toFixed(1)} s`;
+  if (timerEl) timerEl.textContent = t('calib.remaining') + (remaining / 1000).toFixed(1) + t('calib.seconds');
 
   const valuesEl = document.getElementById('calib-values');
   if (valuesEl) {
     valuesEl.textContent =
-      `${calibState.current.toUpperCase()} (P${pairIdx})  min=${calibState.min}  max=${calibState.max}  zakres=${calibState.max - calibState.min}`;
+      `${calibState.current.toUpperCase()} (P${pairIdx})  min=${calibState.min}  max=${calibState.max}  range=${calibState.max - calibState.min}`;
   }
 
   if (elapsed >= calibState.duration) {
@@ -456,10 +449,12 @@ function updateCalibration() {
       if (errEl) {
         errEl.style.display = 'block';
         errEl.innerHTML =
-          `❌ <b>Zakres zbyt mały (${range} &lt; ${CALIB_MIN_RANGE}).</b><br>` +
-          `Czy na pewno ruszałeś <b>${calibState.current.toUpperCase()}</b>?<br>` +
-          `Spróbuj ponownie — ruszaj drążkiem <b>do oporu w obie strony</b>.<br>` +
-          `<button id="btn-calib-retry" style="margin-top:10px;">↻ Spróbuj ponownie</button>`;
+          t('calib.range_too_small', {
+            range: range,
+            min: CALIB_MIN_RANGE,
+            fn: calibState.current.toUpperCase()
+          }) +
+          `<button id="btn-calib-retry" style="margin-top:10px;">${t('calib.btn_retry')}</button>`;
 
         document.getElementById('btn-calib-retry').addEventListener('click', () => {
           calibState.queue.unshift(calibState.current);
@@ -498,7 +493,6 @@ function finishCalibration() {
   map.yaw.inverted = true;
 
   window.padData.profile = { map: map };
-
   saveCalibrationToStorage(map);
 
   calibState = null;
@@ -521,7 +515,6 @@ function saveCalibrationToStorage(map) {
       };
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    console.log('💾 Kalibracja zapisana w localStorage');
   } catch (e) {
     console.warn('⚠️ Nie udało się zapisać kalibracji:', e);
   }
@@ -570,7 +563,6 @@ window.cameraAngleIndex = 0;
 window.cycleCameraAngle = function() {
   window.cameraAngleIndex = (window.cameraAngleIndex + 1) % window.cameraAngles.length;
   const angle = window.cameraAngles[window.cameraAngleIndex];
-  console.log(`📷 Kąt kamery (cykl): ${angle}°`);
 
   const camEl = document.getElementById('camAngle');
   if (camEl) camEl.textContent = angle + '°';
@@ -586,7 +578,7 @@ window.setCameraAngle = function(angleDeg) {
 };
 
 // ================================================================
-// WYBÓR PLANSZY — z czekaniem na gotowość symulatora
+// WYBÓR PLANSZY
 // ================================================================
 document.querySelectorAll('.world-card').forEach(card => {
   card.addEventListener('click', () => {
@@ -599,23 +591,17 @@ document.querySelectorAll('.world-card').forEach(card => {
     setTimeout(() => {
       hideOverlay();
 
-      // ─── POCZEKAJ, AŻ main.js ZDEFINIUJE window.startSimulator ───
       let attempts = 0;
-      const maxAttempts = 50; // 5 sekund (50 × 100ms)
+      const maxAttempts = 50;
 
       const waitForSimulator = () => {
         if (window.startSimulator) {
-          console.log('✅ Symulator gotowy — startuję:', world);
           window.startSimulator(world);
         } else if (attempts < maxAttempts) {
           attempts++;
-          if (attempts % 10 === 0) {
-            console.log(`⏳ Czekam na symulator... (${attempts * 100} ms)`);
-          }
           setTimeout(waitForSimulator, 100);
         } else {
-          console.error('❌ Symulator nie załadował się w 5 s. Sprawdź konsolę.');
-          alert('❌ Symulator nie załadował się w ciągu 5 sekund.\n\nSprawdź konsolę (F12) i odśwież stronę.');
+          alert(t('alerts.sim_not_ready'));
         }
       };
 
@@ -623,6 +609,7 @@ document.querySelectorAll('.world-card').forEach(card => {
     }, 200);
   });
 });
+
 // ================================================================
 // PRZYCISKI
 // ================================================================
@@ -632,20 +619,20 @@ document.getElementById('btn-start').addEventListener('click', () => {
 
 document.getElementById('btn-connect').addEventListener('click', async () => {
   const status = document.getElementById('connect-status');
-  status.textContent = '⏳ Łączę...';
+  status.textContent = t('connect.status_connecting');
   status.style.color = '#ff0';
 
   const dev = await connectPad(true);
 
   if (dev) {
-    status.textContent = '✅ Połączono: ' + dev.productName;
+    status.textContent = t('connect.status_connected') + dev.productName;
     status.style.color = '#0f0';
     setTimeout(() => {
       initMappingUI();
       showStep('step-mapping');
     }, 500);
   } else {
-    status.textContent = '❌ Nie udało się połączyć.';
+    status.textContent = t('connect.status_failed');
     status.style.color = '#f44';
   }
 });
@@ -653,7 +640,7 @@ document.getElementById('btn-connect').addEventListener('click', async () => {
 document.getElementById('btn-mapping-next').addEventListener('click', () => {
   const assigned = mappingState.assignments.filter(a => a !== '---');
   if (assigned.length < 4) {
-    alert('❌ Przypisz co najmniej 4 funkcje (THROTTLE, YAW, PITCH, ROLL).\nAktualnie: ' + assigned.length);
+    alert(t('alerts.missing_4', { count: assigned.length }));
     return;
   }
 
@@ -672,13 +659,11 @@ document.getElementById('btn-mapping-next').addEventListener('click', () => {
 
   if (saved && sessionPadId && currentPadId && sessionPadId === currentPadId) {
     if (applySavedCalibration(saved, assignedPairs)) {
-      console.log('✅ Użyto zapisanej kalibracji (ta sama sesja, ten sam pad)');
       showStep('step-done');
       return;
     }
   }
 
-  console.log('🔧 Wymagana nowa kalibracja');
   startCalibration();
 });
 
@@ -702,7 +687,6 @@ document.getElementById('btn-reconnect').addEventListener('click', async () => {
     const banner = document.getElementById('reconnectBanner');
     if (banner) banner.classList.remove('show');
     if (window.padData.onReconnect) window.padData.onReconnect();
-    console.log('✅ Ponownie połączono z padem');
   }
 });
 
@@ -710,7 +694,7 @@ window.padData.onDisconnect = () => {
   const banner = document.getElementById('reconnectBanner');
   if (banner) banner.classList.add('show');
   const statusEl = document.getElementById('status');
-  if (statusEl) statusEl.textContent = 'ROZŁĄCZONY';
+  if (statusEl) statusEl.textContent = t('hud.disconnected');
   const hud = document.getElementById('hud');
   if (hud) hud.classList.add('paused');
 };
@@ -719,7 +703,7 @@ window.padData.onReconnect = () => {
   const banner = document.getElementById('reconnectBanner');
   if (banner) banner.classList.remove('show');
   const statusEl = document.getElementById('status');
-  if (statusEl) statusEl.textContent = 'OK';
+  if (statusEl) statusEl.textContent = t('hud.ok');
   const hud = document.getElementById('hud');
   if (hud) hud.classList.remove('paused');
 };
@@ -731,3 +715,16 @@ window.padData.onReconnect = () => {
   const dev = await connectPad(false);
   if (dev) console.log('✅ Auto-połączono z padem');
 })();
+
+// ================================================================
+// REAKCJA NA ZMIANĘ JĘZYKA (odśwież schemat pada)
+// ================================================================
+window.addEventListener('langchange', () => {
+  // Odśwież schemat pada z nowymi tłumaczeniami
+  if (document.getElementById('pad-scheme-mapping')) {
+    renderPadSchemeInto('pad-scheme-mapping', null);
+  }
+  if (document.getElementById('pad-scheme') && calibState) {
+    renderPadScheme(STICK_FOR_FN[calibState.current]);
+  }
+});

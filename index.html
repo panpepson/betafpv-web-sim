@@ -1,71 +1,69 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>BetaFPV Web Sim — Symulator FPV w przeglądarce</title>
+<title>BetaFPV Web Sim — FPV Simulator in Your Browser</title>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     SEO / PODSTAWOWE
-     ═══════════════════════════════════════════════════════════════ -->
-<meta name="description" content="Przeglądarkowy symulator drona FPV sterowany fizycznym padem BetaFPV LiteRadio 2 SE przez WebHID API. Three.js, 3 poziomy trudności, realistyczna fizyka racera.">
-<meta name="keywords" content="FPV, symulator, dron, BetaFPV, LiteRadio 2 SE, WebHID, Three.js, racer, przeglądarka, WebGL">
+<!-- SEO -->
+<meta name="description" content="Browser-based FPV drone simulator controlled with a physical BetaFPV LiteRadio 2 SE radio via WebHID API. Three.js, realistic racer physics, 3 difficulty levels.">
+<meta name="keywords" content="FPV, simulator, drone, BetaFPV, LiteRadio 2 SE, WebHID, Three.js, racer, browser, WebGL">
 <meta name="author" content="panpepson">
 <meta name="theme-color" content="#0f0">
 
-<!-- ═══════════════════════════════════════════════════════════════
-     OPEN GRAPH — Facebook, LinkedIn, Discord, Slack
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="BetaFPV Web Sim">
-<meta property="og:title" content="BetaFPV Web Sim — Symulator FPV w przeglądarce">
-<meta property="og:description" content="Przeglądarkowy symulator drona FPV sterowany padem BetaFPV LiteRadio 2 SE przez WebHID. Three.js, realistyczna fizyka, 3 poziomy trudności.">
-<meta property="og:url" content="https://betafpv.vercel.app">
+<meta property="og:title" content="🚁 BetaFPV Web Sim — FPV Simulator">
+<meta property="og:description" content="Browser-based FPV drone simulator with realistic racer physics.">
+<meta property="og:url" content="https://betafpv.vercel.app/">
 <meta property="og:image" content="https://betafpv.vercel.app/img/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="BetaFPV Web Sim — symulator FPV w przeglądarce">
-<meta property="og:locale" content="pl_PL">
+<meta property="og:image:alt" content="BetaFPV Web Sim — FPV simulator in browser">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="pl_PL">
 
-<!-- ═══════════════════════════════════════════════════════════════
-     TWITTER CARD
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- Hreflang -->
+<link rel="alternate" hreflang="en" href="https://betafpv.vercel.app/en">
+<link rel="alternate" hreflang="pl" href="https://betafpv.vercel.app/pl">
+<link rel="alternate" hreflang="x-default" href="https://betafpv.vercel.app/">
+
+<!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@devPepson">
 <meta name="twitter:creator" content="@devPepson">
-<meta name="twitter:title" content="BetaFPV Web Sim — Symulator FPV w przeglądarce">
-<meta name="twitter:description" content="Przeglądarkowy symulator drona FPV sterowany padem BetaFPV LiteRadio 2 SE przez WebHID. Three.js, realistyczna fizyka racera.">
+<meta name="twitter:title" content="🚁 BetaFPV Web Sim — FPV Simulator">
+<meta name="twitter:description" content="Browser-based FPV drone simulator with realistic racer physics.">
 <meta name="twitter:image" content="https://betafpv.vercel.app/img/preview.png">
-<meta name="twitter:image:alt" content="BetaFPV Web Sim — symulator FPV w przeglądarce">
+<meta name="twitter:image:alt" content="BetaFPV Web Sim — FPV simulator in browser">
 
-<!-- ═══════════════════════════════════════════════════════════════
-     FAVICON
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- Favicon -->
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="favicon.ico">
 
-<!-- ═══════════════════════════════════════════════════════════════
-     STYLES
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- Styles -->
 <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
 
-<div id="hud" class="hidden">
-  <div>Throttle: <span id="thr">0.00</span></div>
-  <div>Yaw:      <span id="yaw">0.00</span></div>
-  <div>Roll:     <span id="rol">0.00</span></div>
-  <div>Pitch:    <span id="pit">0.00</span></div>
-  <div>Wysokość: <span id="alt">0.0</span> m</div>
-  <div>Prędkość: <span id="spd">0.0</span> m/s</div>
-  <div>Status:   <span id="status">OK</span></div>
-  <div>Kamera:   <span id="camAngle">0°</span></div>
-</div>
-<button id="menuBtn" class="hidden">⬅ Menu</button>
+<!-- Przycisk zmiany języka -->
+<button id="langToggle" class="lang-toggle" title="Change language / Zmień język">🇵🇱 PL</button>
 
-<!-- Celownik FPV — biały, kropka + małe znaczniki -->
+<div id="hud" class="hidden">
+  <div><span data-i18n="hud.throttle">Throttle:</span> <span id="thr">0.00</span></div>
+  <div><span data-i18n="hud.yaw">Yaw:</span>      <span id="yaw">0.00</span></div>
+  <div><span data-i18n="hud.roll">Roll:</span>     <span id="rol">0.00</span></div>
+  <div><span data-i18n="hud.pitch">Pitch:</span>    <span id="pit">0.00</span></div>
+  <div><span data-i18n="hud.altitude">Altitude:</span> <span id="alt">0.0</span> m</div>
+  <div><span data-i18n="hud.speed">Speed:</span> <span id="spd">0.0</span> m/s</div>
+  <div><span data-i18n="hud.status">Status:</span>   <span id="status">OK</span></div>
+  <div><span data-i18n="hud.camera">Camera:</span>   <span id="camAngle">0°</span></div>
+</div>
+<button id="menuBtn" class="hidden" data-i18n="menu">⬅ Menu</button>
+
+<!-- Celownik -->
 <div id="crosshair" class="hidden">
   <svg width="80" height="80" viewBox="0 0 80 80">
     <circle cx="40" cy="40" r="2.5" fill="#fff"/>
@@ -78,15 +76,15 @@
 
 <!-- Wskaźnik pauzy -->
 <div id="pauseIndicator" class="hidden">
-  <div>⏸️ PAUZA</div>
-  <div style="font-size:13px; color:#aaa; margin-top:8px;">Naciśnij <b>P</b>, aby wznowić</div>
+  <div data-i18n="pause.title">⏸️ PAUSED</div>
+  <div style="font-size:13px; color:#aaa; margin-top:8px;" data-i18n-html="pause.hint">Press <b>P</b> to resume</div>
 </div>
 
-<!-- Banner rozłączenia pada -->
+<!-- Banner rozłączenia -->
 <div id="reconnectBanner">
-  <div>⚠️ Pad rozłączony</div>
-  <div style="font-size:14px; margin-top:10px; color:#aaa;">Podłącz pada z powrotem i kliknij poniżej.</div>
-  <button id="btn-reconnect">🔄 Połącz ponownie</button>
+  <div data-i18n="disconnect.title">⚠️ Radio disconnected</div>
+  <div style="font-size:14px; margin-top:10px; color:#aaa;" data-i18n="disconnect.hint">Connect the radio back and click below.</div>
+  <button id="btn-reconnect" data-i18n="disconnect.btn_reconnect">🔄 Reconnect</button>
 </div>
 
 <div id="overlay">
@@ -94,59 +92,53 @@
 
     <!-- KROK 1: Start -->
     <div class="step active" id="step-start">
-      <h1>🚁 BetaFPV Web Sim</h1>
-      <p>Witaj! Zanim zaczniesz latać, musimy <b>zmapować Twój pad</b> i <b>skalibrować zakresy drążków</b>.</p>
+      <h1 data-i18n="start.title">🚁 BetaFPV Web Sim</h1>
+      <p data-i18n-html="start.welcome">Welcome! ...</p>
 
       <p class="repo-link">
-        📦 <b>Repozytorium projektu:</b><br>
+        <span data-i18n-html="start.repo_label">📦 <b>Project repository:</b></span><br>
         <a href="https://github.com/panpepson/betafpv-web-sim" target="_blank" rel="noopener noreferrer">
           https://github.com/panpepson/betafpv-web-sim
         </a>
       </p>
 
-      <p><b>Uwaga:</b> mapowanie trzeba zrobić <b>za każdym razem po odświeżeniu strony</b>. Twój pad przy każdym podłączeniu generuje sygnał na innych parach bajtów — dlatego nie da się zapisać mapowania na stałe. <b>Kalibracja</b> natomiast zostanie zapamiętana w przeglądarce — dopóki pad pozostanie podłączony.</p>
-      <p>Proces:</p>
+      <p data-i18n-html="start.warning">...</p>
+      <p data-i18n="start.process_title">Process:</p>
       <ol>
-        <li><b>Mapowanie:</b> ruszasz drążkami, program pokazuje które pary bajtów się ruszają, Ty przypisujesz je do funkcji drona.</li>
-        <li><b>Kalibracja:</b> program prosi o ruszanie każdą funkcją — automatycznie mierzy min/max.</li>
-        <li><b>Wybór planszy:</b> Łatwa / Średnia / Ekspert.</li>
+        <li data-i18n-html="start.process_1">...</li>
+        <li data-i18n-html="start.process_2">...</li>
+        <li data-i18n-html="start.process_3">...</li>
       </ol>
-      <p class="hint">
-        🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD, <b>K</b> — kąt kamery.
-      </p>
-      <button id="btn-start">Rozpocznij mapowanie</button>
+      <p class="hint" data-i18n-html="start.shortcuts">...</p>
+      <button id="btn-start" data-i18n="start.btn_start">Start mapping</button>
     </div>
 
     <!-- KROK 2: Podłącz pad -->
     <div class="step" id="step-connect">
-      <h2>Krok 1/4 — Podłącz pad</h2>
-      <p>Kliknij poniżej i wybierz <b>BETAFPV Joystick</b> z listy.</p>
-      <div id="connect-status">⏳ Czekam...</div>
-      <button id="btn-connect">Połącz z padem</button>
+      <h2 data-i18n="connect.step">Step 1/4 — Connect radio</h2>
+      <p data-i18n-html="connect.instruction">...</p>
+      <div id="connect-status" data-i18n="connect.status_waiting">⏳ Waiting...</div>
+      <button id="btn-connect" data-i18n="connect.btn_connect">Connect radio</button>
     </div>
 
     <!-- KROK 3: Mapowanie -->
     <div class="step" id="step-mapping">
-      <h2>Krok 2/4 — Mapowanie osi</h2>
-      <p><b>Ruszaj drążkami po kolei</b> (każdy w każdą stronę) i obserwuj, które paski się ruszają. Potem przypisz odpowiednie pary do funkcji drona.</p>
+      <h2 data-i18n="mapping.step">Step 2/4 — Axis mapping</h2>
+      <p data-i18n-html="mapping.instruction">...</p>
 
       <div class="pad-scheme" id="pad-scheme-mapping"></div>
 
       <div id="axis-list"></div>
 
-      <p class="hint">
-        ⚠️ <b>Wskazówka:</b> jeśli jakaś para nie rusza się przy drążkach, ale rusza się przy przełączniku — zostaw ją jako <b>---</b>.
-        Pary <b>nieprzypisane</b> będą <b>ignorowane</b> przez symulator.<br>
-        📷 <b>CAMERA</b> — przypisz do przełącznika 3-pozycyjnego (SA/SB/SC), żeby zmieniać kąt kamery FPV.
-      </p>
+      <p class="hint" data-i18n-html="mapping.hint">...</p>
 
-      <button id="btn-mapping-next">Dalej → Kalibracja zakresów</button>
+      <button id="btn-mapping-next" data-i18n="mapping.btn_next">Next → Range calibration</button>
     </div>
 
     <!-- KROK 4: Kalibracja -->
     <div class="step" id="step-calib">
-      <h2>Krok 3/4 — Kalibracja zakresów</h2>
-      <p>Program poprosi Cię po kolei o ruszanie każdą funkcją. Ruszaj drążkiem <b>do oporu w obie strony</b>. Kalibracja zaczyna się od <b>prawego drążka</b> (Pitch, Roll), a kończy na lewym (Throttle, Yaw).</p>
+      <h2 data-i18n="calib.step">Step 3/4 — Range calibration</h2>
+      <p data-i18n-html="calib.instruction">...</p>
 
       <div class="pad-scheme" id="pad-scheme"></div>
 
@@ -161,45 +153,53 @@
 
     <!-- KROK 5: Wybór planszy -->
     <div class="step" id="step-done">
-      <h2>Krok 4/4 — Wybierz planszę</h2>
-      <p>Kalibracja zakończona. Wybierz poziom trudności:</p>
+      <h2 data-i18n="world.step">Step 4/4 — Choose world</h2>
+      <p data-i18n="world.instruction">Calibration complete. Choose difficulty level:</p>
 
       <div class="world-grid">
         <div class="world-card" data-world="beginner">
-          <h3>🟢 ŁATWA</h3>
-          <p>Nauka podstaw. Mało przeszkód, mała grawitacja, wolny lot. Idealna na start.</p>
+          <h3 data-i18n="world.beginner_title">🟢 EASY</h3>
+          <p data-i18n="world.beginner_desc">Learn the basics...</p>
         </div>
         <div class="world-card" data-world="intermediate">
-          <h3>🟡 ŚREDNIA</h3>
-          <p>Trening. Więcej drzew i bramek, większa zwrotność i prędkość.</p>
+          <h3 data-i18n="world.intermediate_title">🟡 MEDIUM</h3>
+          <p data-i18n="world.intermediate_desc">Training...</p>
         </div>
         <div class="world-card" data-world="expert">
-          <h3>🔴 EKSPERT</h3>
-          <p>Realistyczna fizyka racera: przechył → siła pozioma, bezwładność kątowa, grawitacja 9.81.</p>
+          <h3 data-i18n="world.expert_title">🔴 EXPERT</h3>
+          <p data-i18n="world.expert_desc">Realistic racer physics...</p>
         </div>
       </div>
 
-      <p class="hint">
-        🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD, <b>K</b> — kąt kamery.
-      </p>
+      <p class="hint" data-i18n-html="start.shortcuts">...</p>
 
-      <button id="btn-recalibrate" class="danger">↻ Mapuj ponownie</button>
+      <button id="btn-recalibrate" class="danger" data-i18n="world.btn_recalibrate">↻ Remap</button>
     </div>
 
   </div>
 </div>
 
-
 <script type="importmap">
 {
   "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
   }
 }
 </script>
 
-<script type="module" src="calibration.js"></script>
+<script type="module">
+  import { initI18n, toggleLang } from './i18n/index.js';
+
+  // Inicjalizacja i18n zanim załadują się main.js i calibration.js
+  await initI18n();
+
+  // Przełącznik języka
+  document.getElementById('langToggle').addEventListener('click', () => {
+    toggleLang();
+  });
+</script>
 
 <script type="module" src="main.js"></script>
+<script type="module" src="calibration.js"></script>
 </body>
 </html>

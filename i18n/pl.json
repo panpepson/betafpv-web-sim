@@ -1,0 +1,92 @@
+{
+  "lang": "pl",
+  "lang_name": "Polski",
+  "meta": {
+    "title": "BetaFPV Web Sim — Symulator FPV w przeglądarce",
+    "description": "Przeglądarkowy symulator drona FPV sterowany fizycznym padem BetaFPV LiteRadio 2 SE przez WebHID API. Three.js, realistyczna fizyka racera, 3 poziomy trudności."
+  },
+  "start": {
+    "title": "🚁 BetaFPV Web Sim",
+    "welcome": "Witaj! Zanim zaczniesz latać, musimy <b>zmapować Twój pad</b> i <b>skalibrować zakresy drążków</b>.",
+    "repo_label": "📦 <b>Repozytorium projektu:</b>",
+    "warning": "<b>Uwaga:</b> mapowanie trzeba zrobić <b>za każdym razem po odświeżeniu strony</b>. Twój pad przy każdym podłączeniu generuje sygnał na innych parach bajtów — dlatego nie da się zapisać mapowania na stałe. <b>Kalibracja</b> natomiast zostanie zapamiętana w przeglądarce — dopóki pad pozostanie podłączony.",
+    "process_title": "Proces:",
+    "process_1": "<b>Mapowanie:</b> ruszasz drążkami, program pokazuje które pary bajtów się ruszają, Ty przypisujesz je do funkcji drona.",
+    "process_2": "<b>Kalibracja:</b> program prosi o ruszanie każdą funkcją — automatycznie mierzy min/max.",
+    "process_3": "<b>Wybór planszy:</b> Łatwa / Średnia / Ekspert.",
+    "shortcuts": "🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD, <b>K</b> — kąt kamery.",
+    "btn_start": "Rozpocznij mapowanie"
+  },
+  "connect": {
+    "step": "Krok 1/4 — Podłącz pad",
+    "instruction": "Kliknij poniżej i wybierz <b>BETAFPV Joystick</b> z listy.",
+    "status_waiting": "⏳ Czekam...",
+    "status_connecting": "⏳ Łączę...",
+    "status_connected": "✅ Połączono: ",
+    "status_failed": "❌ Nie udało się połączyć.",
+    "btn_connect": "Połącz z padem"
+  },
+  "mapping": {
+    "step": "Krok 2/4 — Mapowanie osi",
+    "instruction": "<b>Ruszaj drążkami po kolei</b> (każdy w każdą stronę) i obserwuj, które paski się ruszają. Potem przypisz odpowiednie pary do funkcji drona.",
+    "hint": "⚠️ <b>Wskazówka:</b> jeśli jakaś para nie rusza się przy drążkach, ale rusza się przy przełączniku — zostaw ją jako <b>---</b>. Pary <b>nieprzypisane</b> będą <b>ignorowane</b> przez symulator.<br>📷 <b>CAMERA</b> — przypisz do przełącznika 3-pozycyjnego (SA/SB/SC), żeby zmieniać kąt kamery FPV.",
+    "btn_next": "Dalej → Kalibracja zakresów"
+  },
+  "calib": {
+    "step": "Krok 3/4 — Kalibracja zakresów",
+    "instruction": "Program poprosi Cię po kolei o ruszanie każdą funkcją. Ruszaj drążkiem <b>do oporu w obie strony</b>. Kalibracja zaczyna się od <b>prawego drążka</b> (Pitch, Roll), a kończy na lewym (Throttle, Yaw).",
+    "throttle": "Rusz <b>LEWYM drążkiem w GÓRĘ i w DÓŁ</b> — kilka razy do oporu",
+    "yaw": "Rusz <b>LEWYM drążkiem w LEWO i w PRAWO</b> — kilka razy do oporu",
+    "pitch": "Rusz <b>PRAWYM drążkiem w GÓRĘ i w DÓŁ</b> — kilka razy do oporu",
+    "roll": "Rusz <b>PRAWYM drążkiem w LEWO i w PRAWO</b> — kilka razy do oporu",
+    "moving": "Ruszaj drążkiem...",
+    "remaining": "Pozostało: ",
+    "seconds": " s",
+    "range_too_small": "❌ <b>Zakres zbyt mały ({range} &lt; {min}).</b><br>Czy na pewno ruszałeś <b>{fn}</b>?<br>Spróbuj ponownie — ruszaj drążkiem <b>do oporu w obie strony</b>.<br>",
+    "btn_retry": "↻ Spróbuj ponownie"
+  },
+  "world": {
+    "step": "Krok 4/4 — Wybierz planszę",
+    "instruction": "Kalibracja zakończona. Wybierz poziom trudności:",
+    "beginner_title": "🟢 ŁATWA",
+    "beginner_desc": "Nauka podstaw. Mało przeszkód, mała grawitacja, wolny lot. Idealna na start.",
+    "intermediate_title": "🟡 ŚREDNIA",
+    "intermediate_desc": "Trening. Więcej drzew i bramek, większa zwrotność i prędkość.",
+    "expert_title": "🔴 EKSPERT",
+    "expert_desc": "Realistyczna fizyka racera: przechył → siła pozioma, bezwładność kątowa, grawitacja 9.81.",
+    "btn_recalibrate": "↻ Mapuj ponownie"
+  },
+  "hud": {
+    "throttle": "Throttle:",
+    "yaw": "Yaw:",
+    "roll": "Roll:",
+    "pitch": "Pitch:",
+    "altitude": "Wysokość:",
+    "speed": "Prędkość:",
+    "status": "Status:",
+    "camera": "Kamera:",
+    "ok": "OK",
+    "disconnected": "ROZŁĄCZONY"
+  },
+  "pause": {
+    "title": "⏸️ PAUZA",
+    "hint": "Naciśnij <b>P</b>, aby wznowić"
+  },
+  "disconnect": {
+    "title": "⚠️ Pad rozłączony",
+    "hint": "Podłącz pada z powrotem i kliknij poniżej.",
+    "btn_reconnect": "🔄 Połącz ponownie"
+  },
+  "menu": "⬅ Menu",
+  "alerts": {
+    "missing_functions": "❌ Nie przypisano funkcji: {list}\n\nWróć do mapowania i przypisz wszystkie 4 funkcje (THROTTLE, YAW, PITCH, ROLL).",
+    "missing_4": "❌ Przypisz co najmniej 4 funkcje (THROTTLE, YAW, PITCH, ROLL).\nAktualnie: {count}",
+    "sim_not_ready": "❌ Symulator nie załadował się w ciągu 5 sekund.\n\nSprawdź konsolę (F12) i odśwież stronę."
+  },
+  "pad_scheme": {
+    "mode": "MODE 2",
+    "left_stick": "LEWY",
+    "right_stick": "PRAWY",
+    "footer": "SA = kąt kamery FPV (0° / 20° / 35°)"
+  }
+}
