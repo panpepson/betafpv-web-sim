@@ -1,0 +1,55 @@
+# ═══════════════════════════════════════════════════════════════
+# BetaFPV Web Sim — robots.txt
+# ═══════════════════════════════════════════════════════════════
+
+# ─── Domyślnie: wszystko dozwolone ───
+User-agent: *
+Allow: /
+
+# ─── Facebook / Meta (dla OG image) ───
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Facebot
+Allow: /
+
+# ─── Twitter / X (dla Twitter Card) ───
+User-agent: Twitterbot
+Allow: /
+
+# ─── LinkedIn ───
+User-agent: LinkedInBot
+Allow: /
+
+# ─── Discord (dla embedów) ───
+User-agent: Discordbot
+Allow: /
+
+# ─── Slack (dla unfurl) ───
+User-agent: Slackbot
+Allow: /
+
+User-agent: Slack-Image-Proxy
+Allow: /
+
+# ─── WhatsApp ───
+User-agent: WhatsApp
+Allow: /
+
+# ─── Telegram ───
+User-agent: TelegramBot
+Allow: /
+
+# ─── Pinterest ───
+User-agent: Pinterest
+Allow: /
+
+# ─── Google / Bing (SEO) ───
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# ─── Sitemap ───
+Sitemap: https://betafpv.vercel.app/sitemap.xml
