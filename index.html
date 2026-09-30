@@ -21,7 +21,7 @@
 <meta property="og:site_name" content="BetaFPV Web Sim">
 <meta property="og:title" content="🚁 BetaFPV Web Sim — Symulator FPV w przeglądarce">
 <meta property="og:description" content="Przeglądarkowy symulator drona FPV sterowany padem BetaFPV LiteRadio 2 SE przez WebHID. Three.js, realistyczna fizyka, 3 poziomy trudności.">
-<meta property="og:url" content="https://github.com/panpepson/betafpv-web-sim">
+<meta property="og:url" content="https://betafpv.vercel.app/">
 <meta property="og:image" content="https://raw.githubusercontent.com/panpepson/betafpv-web-sim/main/img/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -49,6 +49,14 @@
      STYLES
      ═══════════════════════════════════════════════════════════════ -->
 <link rel="stylesheet" href="style.css">
+<!-- ═══════════════════════════════════════════════════════════════
+     PWA
+     ═══════════════════════════════════════════════════════════════ -->
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BetaFPV Sim">
+<meta name="mobile-web-app-capable" content="yes">
 </head>
 <body>
 
@@ -197,6 +205,22 @@
 </script>
 
 <script type="module" src="calibration.js"></script>
+<!-- ═══════════════════════════════════════════════════════════════
+     PWA — rejestracja Service Workera
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          console.log('✅ Service Worker zarejestrowany:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('⚠️ Service Worker błąd:', err);
+        });
+    });
+  }
+</script
 <script type="module" src="main.js"></script>
 </body>
 </html>
