@@ -1,9 +1,9 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
-  "rewrites": [
-    { "source": "/en", "destination": "/index.html?lang=en" },
-    { "source": "/pl", "destination": "/index.html?lang=pl" }
+  "redirects": [
+    { "source": "/en", "destination": "/?lang=en", "permanent": false },
+    { "source": "/pl", "destination": "/?lang=pl", "permanent": false }
   ],
   "headers": [
     {
