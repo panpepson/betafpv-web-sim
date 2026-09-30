@@ -42,7 +42,7 @@ async function loadTranslations() {
 // WYKRYWANIE JĘZYKA
 // ================================================================
 function detectLang() {
-  // 1. Sprawdź ścieżkę URL (/en lub /pl) — dla Vercel redirects/rewrites
+  // 1. Ścieżka URL (/en lub /pl)
   const path = window.location.pathname.toLowerCase();
   if (path === '/en' || path.endsWith('/en')) {
     console.log('🌍 i18n: język ze ścieżki:', 'en');
@@ -53,7 +53,7 @@ function detectLang() {
     return 'pl';
   }
 
-  // 2. Sprawdź query string (?lang=pl lub ?lang=en)
+  // 2. Query string (?lang=pl lub ?lang=en)
   const urlParams = new URLSearchParams(window.location.search);
   const urlLang = urlParams.get('lang');
   if (urlLang && SUPPORTED_LANGS.includes(urlLang)) {
@@ -61,7 +61,7 @@ function detectLang() {
     return urlLang;
   }
 
-  // 3. Sprawdź localStorage (wybór użytkownika)
+  // 3. localStorage (wybór użytkownika)
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored && SUPPORTED_LANGS.includes(stored)) {
@@ -70,7 +70,7 @@ function detectLang() {
     }
   } catch (e) {}
 
-  // 4. Sprawdź język przeglądarki
+  // 4. Język przeglądarki
   const browserLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
   const primary = browserLang.split('-')[0];
   if (SUPPORTED_LANGS.includes(primary)) {
@@ -84,7 +84,7 @@ function detectLang() {
 }
 
 // ================================================================
-// TŁUMACZENIE — pobierz wartość po kluczu "a.b.c"
+// TŁUMACZENIE
 // ================================================================
 export function t(key, vars = {}) {
   const keys = key.split('.');
@@ -99,7 +99,6 @@ export function t(key, vars = {}) {
     }
   }
 
-  // Podstaw zmienne {var}
   if (typeof value === 'string') {
     for (const [k, v] of Object.entries(vars)) {
       value = value.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
@@ -139,7 +138,7 @@ function applyTranslations() {
     if (value) el.textContent = value;
   });
 
-  // 3. Elementy z data-i18n-html (innerHTML — dla tagów <b>)
+  // 3. Elementy z data-i18n-html (innerHTML)
   document.querySelectorAll('[data-i18n-html]').forEach(el => {
     const key = el.getAttribute('data-i18n-html');
     const value = t(key);
@@ -156,15 +155,14 @@ function applyTranslations() {
   // 5. Atrybut lang na <html>
   document.documentElement.setAttribute('lang', currentLang);
 
-  // 6. Flagi językowe — podświetl aktywną
-  document.querySelectorAll('.lang-flag').forEach(btn => {
-    const btnLang = btn.getAttribute('data-lang');
-    if (btnLang === currentLang) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
+  // 6. Przełącznik języka — pokaż flagę języka, na który można się przełączyć
+  const langBtn = document.getElementById('langToggle');
+  if (langBtn) {
+    langBtn.textContent = currentLang === 'pl' ? '🇬🇧' : '🇵🇱';
+    langBtn.title = currentLang === 'pl'
+      ? 'Switch to English'
+      : 'Zmień na polski';
+  }
 
   console.log('🌍 i18n: zastosowano tłumaczenia dla:', currentLang);
 }
@@ -187,12 +185,12 @@ export function setLang(lang) {
 
   applyTranslations();
 
-  // Zaktualizuj URL (bez przeładowania) — dla SEO
+  // Zaktualizuj URL (bez przeładowania)
   const url = new URL(window.location);
   url.searchParams.set('lang', lang);
   window.history.replaceState({}, '', url);
 
-  // Emituj event dla innych modułów (main.js, calibration.js)
+  // Emituj event dla innych modułów
   window.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
 
   console.log('🌍 i18n: zmieniono język na:', lang);

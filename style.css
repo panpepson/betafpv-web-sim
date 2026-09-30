@@ -20,6 +20,7 @@ body {
 #overlay.hidden { display: none; }
 
 #panel {
+  position: relative;
   max-width: 820px; width: 95%;
   border: 2px solid #0f0; padding: 25px;
   background: #0a0a0a; border-radius: 8px;
@@ -42,6 +43,64 @@ body {
 
 .step { display: none; }
 .step.active { display: block; }
+
+/* ─── Akcje startowe (przyciski obok siebie) ─── */
+.start-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+/* ─── Link do repozytorium ─── */
+.repo-link {
+  background: #0a1a0a;
+  border: 1px solid #0f0;
+  border-radius: 6px;
+  padding: 12px 15px;
+  margin: 15px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.repo-link a {
+  color: #0ff;
+  text-decoration: none;
+  word-break: break-all;
+  font-weight: bold;
+}
+.repo-link a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* ─── Przełącznik języka (pojedyncza flaga emoji) ─── */
+.lang-toggle {
+  width: 52px;
+  height: 42px;
+  padding: 0;
+  background: #0a1a0a;
+  border: 2px solid #0f0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif;
+  font-size: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin: 4px;
+}
+.lang-toggle:hover {
+  border-color: #0ff;
+  background: #0a2a2a;
+  box-shadow: 0 0 12px #0ff;
+  transform: scale(1.05);
+}
+.lang-toggle:active {
+  transform: scale(0.95);
+}
 
 /* ─── Lista osi (mapowanie) ─── */
 .axis-row {
@@ -168,7 +227,7 @@ body {
   cursor: pointer; font-weight: bold;
 }
 
-/* ─── Celownik FPV (Spacja) — biały, kropka + małe znaczniki ─── */
+/* ─── Celownik FPV (Spacja) ─── */
 #crosshair {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
@@ -187,126 +246,3 @@ body {
   text-align: center; font-family: monospace;
 }
 #pauseIndicator.hidden { display: none; }
-
-/* ─── Schemat pada — etykiety funkcji ─── */
-.pad-scheme .pad-label {
-  font-family: monospace;
-  font-weight: bold;
-  letter-spacing: 1px;
-}
-.pad-scheme .pad-mode {
-  font-family: monospace;
-  font-weight: bold;
-  letter-spacing: 2px;
-  fill: #0ff;
-}
-
-/* ─── Link do repozytorium w panelu startowym ─── */
-.repo-link {
-  background: #0a1a0a;
-  border: 1px solid #0f0;
-  border-radius: 6px;
-  padding: 12px 15px;
-  margin: 15px 0;
-  font-size: 13px;
-  line-height: 1.6;
-}
-.repo-link a {
-  color: #0ff;
-  text-decoration: none;
-  word-break: break-all;
-  font-weight: bold;
-}
-.repo-link a:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-/* ─── Link do repozytorium w panelu startowym ─── */
-.repo-link {
-  background: #0a1a0a;
-  border: 1px solid #0f0;
-  border-radius: 6px;
-  padding: 12px 15px;
-  margin: 15px 0;
-  font-size: 13px;
-  line-height: 1.6;
-}
-.repo-link a {
-  color: #0ff;
-  text-decoration: none;
-  word-break: break-all;
-  font-weight: bold;
-}
-.repo-link a:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-/* ─── Przełącznik języka ─── */
-.lang-toggle {
-  position: absolute;
-  top: 10px;
-  right: 130px;
-  z-index: 50;
-  padding: 8px 14px;
-  background: #066;
-  color: #0ff;
-  border: 1px solid #0ff;
-  cursor: pointer;
-  font-family: monospace;
-  font-size: 14px;
-  font-weight: bold;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-.lang-toggle:hover {
-  background: #088;
-  color: #fff;
-}
-
-/* ─── Przełącznik języka (flagi w panelu) ─── */
-.lang-switcher {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  display: flex;
-  gap: 8px;
-  z-index: 10;
-}
-
-.lang-flag {
-  width: 42px;
-  height: 30px;
-  padding: 4px;
-  background: #0a0a0a;
-  border: 2px solid #0f0;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.lang-flag:hover {
-  border-color: #0ff;
-  transform: scale(1.1);
-  box-shadow: 0 0 10px #0ff;
-}
-
-.lang-flag.active {
-  border-color: #0ff;
-  box-shadow: 0 0 12px #0ff;
-  background: #0a2a2a;
-}
-
-.lang-flag svg {
-  display: block;
-  border-radius: 2px;
-}
-
-/* Panel musi być relative, żeby absolute zadziałał */
-#panel {
-  position: relative;
-}

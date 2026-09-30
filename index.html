@@ -73,25 +73,6 @@
 <div id="overlay">
   <div id="panel">
 
-    <!-- ─── Przełącznik języka — flagi w panelu ─── -->
-    <div class="lang-switcher">
-      <button class="lang-flag" data-lang="pl" title="Polski">
-        <svg width="28" height="20" viewBox="0 0 28 20">
-          <rect width="28" height="10" fill="#ffffff"/>
-          <rect y="10" width="28" height="10" fill="#dc143c"/>
-        </svg>
-      </button>
-      <button class="lang-flag" data-lang="en" title="English">
-        <svg width="28" height="20" viewBox="0 0 28 20">
-          <rect width="28" height="20" fill="#012169"/>
-          <path d="M0,0 L28,20 M28,0 L0,20" stroke="#ffffff" stroke-width="4"/>
-          <path d="M0,0 L28,20 M28,0 L0,20" stroke="#C8102E" stroke-width="2"/>
-          <path d="M14,0 V20 M0,10 H28" stroke="#ffffff" stroke-width="6"/>
-          <path d="M14,0 V20 M0,10 H28" stroke="#C8102E" stroke-width="3"/>
-        </svg>
-      </button>
-    </div>
-
     <!-- KROK 1: Start -->
     <div class="step active" id="step-start">
       <h1 data-i18n="start.title">🚁 BetaFPV Web Sim</h1>
@@ -112,9 +93,14 @@
         <li data-i18n-html="start.process_3">...</li>
       </ol>
       <p class="hint" data-i18n-html="start.shortcuts">...</p>
-      <button id="btn-start" data-i18n="start.btn_start">Start mapping</button>
+
+      <div class="start-actions">
+        <button id="btn-start" data-i18n="start.btn_start">Start mapping</button>
+        <button id="langToggle" class="lang-toggle" title="Change language / Zmień język">🇵🇱</button>
+      </div>
     </div>
 
+    <!-- KROK 2: Podłącz pad -->
     <div class="step" id="step-connect">
       <h2 data-i18n="connect.step">Step 1/4 — Connect radio</h2>
       <p data-i18n-html="connect.instruction">...</p>
@@ -122,6 +108,7 @@
       <button id="btn-connect" data-i18n="connect.btn_connect">Connect radio</button>
     </div>
 
+    <!-- KROK 3: Mapowanie -->
     <div class="step" id="step-mapping">
       <h2 data-i18n="mapping.step">Step 2/4 — Axis mapping</h2>
       <p data-i18n-html="mapping.instruction">...</p>
@@ -131,6 +118,7 @@
       <button id="btn-mapping-next" data-i18n="mapping.btn_next">Next → Range calibration</button>
     </div>
 
+    <!-- KROK 4: Kalibracja -->
     <div class="step" id="step-calib">
       <h2 data-i18n="calib.step">Step 3/4 — Range calibration</h2>
       <p data-i18n-html="calib.instruction">...</p>
@@ -144,6 +132,7 @@
       </div>
     </div>
 
+    <!-- KROK 5: Wybór planszy -->
     <div class="step" id="step-done">
       <h2 data-i18n="world.step">Step 4/4 — Choose world</h2>
       <p data-i18n="world.instruction">Calibration complete. Choose difficulty level:</p>
@@ -177,20 +166,20 @@
 </script>
 
 <script type="module">
-  import { initI18n, setLang } from './i18n/index.js';
+  import { initI18n, toggleLang } from './i18n/index.js';
 
-  // 1. Inicjalizacja i18n — CZEKAJ aż się skończy
+  // 1. CZEKAJ aż i18n będzie gotowe
   await initI18n();
 
-  // 2. Flagi — zmiana języka
-  document.querySelectorAll('.lang-flag').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const lang = btn.getAttribute('data-lang');
-      setLang(lang);
+  // 2. Kliknięcie flagi — zmiana języka
+  const langBtn = document.getElementById('langToggle');
+  if (langBtn) {
+    langBtn.addEventListener('click', () => {
+      toggleLang();
     });
-  });
+  }
 
-  // 3. Dopiero teraz załaduj main.js i calibration.js
+  // 3. DOPIERO TERAZ załaduj main.js i calibration.js
   await import('./main.js');
   await import('./calibration.js');
 </script>
