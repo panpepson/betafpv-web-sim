@@ -17,7 +17,6 @@ const PRECACHE_ASSETS = [
   '/manifest.json',
   '/img/icon-192.png',
   '/img/icon-512.png',
-  '/img/icon-maskable-192.png',
   '/img/icon-maskable-512.png',
   '/img/preview.png',
   // Three.js z CDN — cache'owane przy pierwszym użyciu
