@@ -149,7 +149,7 @@ const WORLDS = {
   expert_race: {
     name: 'RACE — wyścigowy (45° kamera, zero inercji)',
     physicsMode: 'realistic',
-    cameraAngle: 20,
+    cameraAngle: 45,
     cameraAngles: [20, 35, 45],          // ← KĄTY DLA RACE
     skyTop: 0x1a2a52,
     skyBottom: 0x6a8aa8,
