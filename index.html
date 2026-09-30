@@ -73,6 +73,9 @@
 <div id="overlay">
   <div id="panel">
 
+    <!-- ─── Flaga języka — prawy górny róg panelu ─── -->
+    <button id="langToggle" class="lang-toggle" title="Change language / Zmień język">🇵🇱</button>
+
     <!-- KROK 1: Start -->
     <div class="step active" id="step-start">
       <h1 data-i18n="start.title">🚁 BetaFPV Web Sim</h1>
@@ -94,10 +97,7 @@
       </ol>
       <p class="hint" data-i18n-html="start.shortcuts">...</p>
 
-      <div class="start-actions">
-        <button id="btn-start" data-i18n="start.btn_start">Start mapping</button>
-        <button id="langToggle" class="lang-toggle" title="Change language / Zmień język">🇵🇱</button>
-      </div>
+      <button id="btn-start" data-i18n="start.btn_start">Start mapping</button>
     </div>
 
     <!-- KROK 2: Podłącz pad -->
@@ -168,10 +168,8 @@
 <script type="module">
   import { initI18n, toggleLang } from './i18n/index.js';
 
-  // 1. CZEKAJ aż i18n będzie gotowe
   await initI18n();
 
-  // 2. Kliknięcie flagi — zmiana języka
   const langBtn = document.getElementById('langToggle');
   if (langBtn) {
     langBtn.addEventListener('click', () => {
@@ -179,7 +177,6 @@
     });
   }
 
-  // 3. DOPIERO TERAZ załaduj main.js i calibration.js
   await import('./main.js');
   await import('./calibration.js');
 </script>

@@ -44,15 +44,6 @@ body {
 .step { display: none; }
 .step.active { display: block; }
 
-/* ─── Akcje startowe (przyciski obok siebie) ─── */
-.start-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 15px;
-  flex-wrap: wrap;
-}
-
 /* ─── Link do repozytorium ─── */
 .repo-link {
   background: #0a1a0a;
@@ -74,31 +65,34 @@ body {
   text-decoration: underline;
 }
 
-/* ─── Przełącznik języka (pojedyncza flaga emoji) ─── */
-.lang-toggle {
-  width: 52px;
-  height: 42px;
-  padding: 0;
-  background: #0a1a0a;
-  border: 2px solid #0f0;
-  border-radius: 6px;
+/* ─── Przełącznik języka — sama flaga w prawym górnym rogu panelu ─── */
+#langToggle.lang-toggle {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: auto;
+  height: auto;
+  padding: 4px 6px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
   font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif;
-  font-size: 24px;
+  font-size: 32px;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  margin: 4px;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  margin: 0;
+  z-index: 10;
+  filter: drop-shadow(0 0 4px rgba(0, 255, 0, 0.4));
 }
-.lang-toggle:hover {
-  border-color: #0ff;
-  background: #0a2a2a;
-  box-shadow: 0 0 12px #0ff;
-  transform: scale(1.05);
+#langToggle.lang-toggle:hover {
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
 }
-.lang-toggle:active {
+#langToggle.lang-toggle:active {
   transform: scale(0.95);
 }
 
