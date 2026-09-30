@@ -586,7 +586,7 @@ window.setCameraAngle = function(angleDeg) {
 };
 
 // ================================================================
-// WYBÓR PLANSZY
+// WYBÓR PLANSZY — z czekaniem na gotowość symulatora
 // ================================================================
 document.querySelectorAll('.world-card').forEach(card => {
   card.addEventListener('click', () => {
@@ -598,15 +598,31 @@ document.querySelectorAll('.world-card').forEach(card => {
 
     setTimeout(() => {
       hideOverlay();
-      if (window.startSimulator) {
-        window.startSimulator(world);
-      } else {
-        alert('❌ Symulator nie jest gotowy — odśwież stronę');
-      }
+
+      // ─── POCZEKAJ, AŻ main.js ZDEFINIUJE window.startSimulator ───
+      let attempts = 0;
+      const maxAttempts = 50; // 5 sekund (50 × 100ms)
+
+      const waitForSimulator = () => {
+        if (window.startSimulator) {
+          console.log('✅ Symulator gotowy — startuję:', world);
+          window.startSimulator(world);
+        } else if (attempts < maxAttempts) {
+          attempts++;
+          if (attempts % 10 === 0) {
+            console.log(`⏳ Czekam na symulator... (${attempts * 100} ms)`);
+          }
+          setTimeout(waitForSimulator, 100);
+        } else {
+          console.error('❌ Symulator nie załadował się w 5 s. Sprawdź konsolę.');
+          alert('❌ Symulator nie załadował się w ciągu 5 sekund.\n\nSprawdź konsolę (F12) i odśwież stronę.');
+        }
+      };
+
+      waitForSimulator();
     }, 200);
   });
 });
-
 // ================================================================
 // PRZYCISKI
 // ================================================================
