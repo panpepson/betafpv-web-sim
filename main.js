@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { t } from './i18n/index.js';
+import { CollisionSystem } from './modules/collisions.js';
 
 // ================================================================
 // KONFIGURACJA PLANSZ
@@ -96,7 +97,7 @@ const WORLDS = {
     fogNear: 50,
     fogFar: 400,
     gravity: -9.81,
-    hoverThrottle: 0.38,
+    hoverThrottle: 0.5,
     thrustFactor: 45,
     pitchRollRate: 2.8,
     yawRate: 3.0,
@@ -143,11 +144,70 @@ const WORLDS = {
       [-50, 0, -200, 45, 0.7]
     ],
     water: { x: 90, z: 80, w: 180, d: 130 }
+  },
+
+  expert_race: {
+    name: 'RACE — wyścigowy (45° kamera, zero inercji)',
+    physicsMode: 'realistic',
+    cameraAngle: 20,
+    cameraAngles: [20, 35, 45],          // ← KĄTY DLA RACE
+    skyTop: 0x1a2a52,
+    skyBottom: 0x6a8aa8,
+    fogNear: 40,
+    fogFar: 350,
+    gravity: -9.81,
+    hoverThrottle: 0.5,
+    thrustFactor: 50,
+    pitchRollRate: 5.0,
+    yawRate: 5.0,
+    angularInertia: 1.0,
+    angularDamping: 20.0,
+    airDrag: 0.08,
+    airDragQuadratic: 0.008,
+    maxTiltAngle: Math.PI / 3,
+    maxSpeed: 60,
+    maxAltitude: 300,
+    droneStart: { x: 0, y: 3, z: 20 },
+    trees: [
+      [15, -5, 1.2], [-18, 10, 1.3], [25, 20, 1.4], [-10, -20, 1.1],
+      [35, -30, 1.3], [-30, 25, 1.2], [8, 35, 1.3], [-40, -10, 1.4],
+      [45, 5, 1.2], [-50, 20, 1.3], [20, -45, 1.3], [-25, -50, 1.2]
+    ],
+    gates: [
+      [0, 2, -10, 0],
+      [8, 3, -22, Math.PI / 6],
+      [-6, 4, -35, -Math.PI / 4],
+      [15, 5, -48, Math.PI / 3],
+      [-12, 3, -62, -Math.PI / 6],
+      [20, 6, -75, Math.PI / 4],
+      [-8, 4, -90, 0],
+      [25, 3, -105, -Math.PI / 3],
+      [-15, 5, -120, Math.PI / 6],
+      [18, 4, -135, 0],
+      [-10, 3, -150, Math.PI / 4],
+      [5, 2, -165, 0]
+    ],
+    boxes: [
+      [0, -18, 3, 2, 3, 0xff4444],
+      [-12, 8, 5, 1, 5, 0xffcc00],
+      [18, -5, 3, 3, 3, 0xcc44ff],
+      [-20, -15, 6, 0.5, 6, 0x44ffff],
+      [30, -20, 4, 2, 4, 0xff8800],
+      [-35, 12, 3, 4, 3, 0x00ccff]
+    ],
+    hills: [
+      [-70, 0, -80, 30, 0.5],
+      [90, 0, -100, 30, 0.5]
+    ],
+    water: { x: 70, z: 50, w: 100, d: 80 }
   }
 };
 
 let simState = null;
 
+// ================================================================
+// SYMULATOR
+// ================================================================
 window.startSimulator = function(worldKey) {
   const cfg = WORLDS[worldKey] || WORLDS.beginner;
   console.log('🚁 Start symulatora —', cfg.name, '| fizyka:', cfg.physicsMode, '| kamera:', cfg.cameraAngle + '°');
@@ -180,6 +240,8 @@ window.startSimulator = function(worldKey) {
       });
     }
   };
+
+  const collisions = new CollisionSystem();
 
   // ─── Światło ───
   const sun = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -238,6 +300,15 @@ window.startSimulator = function(worldKey) {
     hill.receiveShadow = true;
     scene.add(hill);
     track(hill);
+
+    // ─── Collider (Box — prostopadłościan obejmujący półkulę) ───
+    const hillRadius = h[3];
+    const hillHeight = h[3] * h[4];
+    collisions.addBox(
+      new THREE.Vector3(h[0] - hillRadius, h[1], h[2] - hillRadius),
+      new THREE.Vector3(h[0] + hillRadius, h[1] + hillHeight, h[2] + hillRadius),
+      { kind: 'hill' }
+    );
   });
 
   // ─── Woda ───
@@ -278,6 +349,14 @@ window.startSimulator = function(worldKey) {
     disposables.materials.push(c2Mat);
 
     group.position.set(x, 0, z);
+
+    // ─── Collider ───
+    collisions.addSphere(
+      new THREE.Vector3(x, 5 * scale, z),
+      2.5 * scale,
+      { kind: 'tree' }
+    );
+
     return group;
   }
   cfg.trees.forEach(t => scene.add(makeTree(t[0], t[1], t[2])));
@@ -292,6 +371,12 @@ window.startSimulator = function(worldKey) {
     scene.add(box);
     disposables.geometries.push(geo);
     disposables.materials.push(mat);
+
+    collisions.addBox(
+      new THREE.Vector3(x - w/2, 0, z - d/2),
+      new THREE.Vector3(x + w/2, h, z + d/2),
+      { kind: 'box', color }
+    );
   }
   cfg.boxes.forEach(b => makeBox(b[0], b[1], b[2], b[3], b[4], b[5]));
 
@@ -350,6 +435,13 @@ window.startSimulator = function(worldKey) {
   let cameraAngleDeg = cfg.cameraAngle || 0;
   let cameraAngleRad = cameraAngleDeg * Math.PI / 180;
 
+  // ─── Kąty kamery per tryb ───
+  // Domyślnie: 0, 20, 35 (dla beginner/intermediate/expert)
+  // Dla RACE: 20, 35, 45
+  const cameraAnglesList = cfg.cameraAngles || [0, 20, 35];
+  let cameraAngleIndex = cameraAnglesList.indexOf(cameraAngleDeg);
+  if (cameraAngleIndex < 0) cameraAngleIndex = 0;
+
   const camEl = document.getElementById('camAngle');
   if (camEl) camEl.textContent = cameraAngleDeg + '°';
 
@@ -363,6 +455,19 @@ window.startSimulator = function(worldKey) {
     cameraAngleRad = angleDeg * Math.PI / 180;
   };
 
+  // ─── Cykl kąta kamery dla tego trybu ───
+  window.cycleCameraAngle = function() {
+    cameraAngleIndex = (cameraAngleIndex + 1) % cameraAnglesList.length;
+    const angle = cameraAnglesList[cameraAngleIndex];
+    cameraAngleDeg = angle;
+    cameraAngleRad = angle * Math.PI / 180;
+
+    const camEl = document.getElementById('camAngle');
+    if (camEl) camEl.textContent = angle + '°';
+
+    console.log(`📷 Kąt kamery (${worldKey}): ${angle}°`);
+  };
+
   window.padData.onDisconnect = () => {
     pausedByDisconnect = true;
   };
@@ -370,6 +475,14 @@ window.startSimulator = function(worldKey) {
     pausedByDisconnect = false;
     prevTime = performance.now();
   };
+
+  function triggerCollisionFlash() {
+    const hud = document.getElementById('hud');
+    if (hud) {
+      hud.classList.add('collision');
+      setTimeout(() => hud.classList.remove('collision'), 300);
+    }
+  }
 
   const onKeyDown = (e) => {
     if (e.code === 'KeyP' || e.key === 'p' || e.key === 'P') {
@@ -396,6 +509,9 @@ window.startSimulator = function(worldKey) {
 
   addEventListener('keydown', onKeyDown);
 
+  // ================================================================
+  // FIZYKA — ARCADE
+  // ================================================================
   function stepPhysicsArcade(dt, inp) {
     const throttle01 = (inp.throttle + 1) / 2;
     const thrust = throttle01 * PHYS.thrustFactor;
@@ -415,30 +531,46 @@ window.startSimulator = function(worldKey) {
     drone.roll  =  inp.roll  * PHYS.visualTilt;
   }
 
+  // ================================================================
+  // FIZYKA — REALISTIC (expert + RACE)
+  // ================================================================
   function stepPhysicsRealistic(dt, inp) {
     drone.targetPitch = -inp.pitch * PHYS.maxTiltAngle;
     drone.targetRoll  =  inp.roll  * PHYS.maxTiltAngle;
 
+    // Yaw
     const targetYawRate = inp.yaw * PHYS.yawRateReal;
     drone.yawRate += (targetYawRate - drone.yawRate) * PHYS.angularDamping * dt;
     drone.yaw += drone.yawRate * dt;
 
-    const pitchError = drone.targetPitch - drone.pitch;
-    const rollError  = drone.targetRoll  - drone.roll;
+    // ─── Pitch / Roll ───
+    if (PHYS.angularInertia >= 0.999) {
+      // RACE MODE — zero bezwładności, natychmiastowe ustawienie kątów
+      drone.pitch = drone.targetPitch;
+      drone.roll  = drone.targetRoll;
+    } else {
+      // Expert — zwykła bezwładność
+      const pitchError = drone.targetPitch - drone.pitch;
+      const rollError  = drone.targetRoll  - drone.roll;
 
-    drone.pitchRate += pitchError * PHYS.pitchRollRate * 8 * dt;
-    drone.rollRate  += rollError  * PHYS.pitchRollRate * 8 * dt;
+      drone.pitchRate += pitchError * PHYS.pitchRollRate * 8 * dt;
+      drone.rollRate  += rollError  * PHYS.pitchRollRate * 8 * dt;
 
-    const damping = PHYS.angularDamping * dt;
-    drone.pitchRate *= Math.max(0, 1 - damping);
-    drone.rollRate  *= Math.max(0, 1 - damping);
+      const damping = PHYS.angularDamping * dt;
+      drone.pitchRate *= Math.max(0, 1 - damping);
+      drone.rollRate  *= Math.max(0, 1 - damping);
 
-    drone.pitch += drone.pitchRate * dt;
-    drone.roll  += drone.rollRate  * dt;
+      drone.pitch += drone.pitchRate * dt;
+      drone.roll  += drone.rollRate  * dt;
+    }
 
+    // ─── THROTTLE ───
     const throttle01 = (inp.throttle + 1) / 2;
     const hoverRatio = throttle01 / PHYS.hoverThrottle;
-    const thrust = hoverRatio * (-PHYS.gravity);
+
+    // ─── CLAMP: ogranicz hoverRatio do 2.0 ───
+    const clampedHoverRatio = Math.max(0, Math.min(2.0, hoverRatio));
+    const thrust = clampedHoverRatio * (-PHYS.gravity);
 
     const cy = Math.cos(drone.yaw),  sy = Math.sin(drone.yaw);
     const cp = Math.cos(drone.pitch), sp = Math.sin(drone.pitch);
@@ -454,6 +586,7 @@ window.startSimulator = function(worldKey) {
 
     drone.vel.y += PHYS.gravity * dt;
 
+    // ─── Opór powietrza ───
     const speed = drone.vel.length();
     if (speed > 0.001) {
       const dragLinear = PHYS.airDrag * speed;
@@ -466,6 +599,9 @@ window.startSimulator = function(worldKey) {
     }
   }
 
+  // ================================================================
+  // GŁÓWNA PĘTLA
+  // ================================================================
   function animate() {
     rafId = requestAnimationFrame(animate);
 
@@ -489,6 +625,25 @@ window.startSimulator = function(worldKey) {
 
     drone.pos.addScaledVector(drone.vel, dt);
 
+    // ─── KOLIZJE ───
+    const collisionsEnabled = (worldKey === 'expert' || worldKey === 'expert_race')
+      ? true
+      : (window.__collisionsEnabled !== false);
+
+    if (collisionsEnabled) {
+      const collision = collisions.check(drone.pos, 0.5);
+
+      if (collision) {
+        drone.vel.copy(collisions.reflect(drone.vel, collision.normal, 0.4));
+        drone.pos.addScaledVector(collision.normal, collision.depth + 0.01);
+        triggerCollisionFlash();
+
+        if (collision.obj.meta && collision.obj.meta.kind) {
+          console.log('💥 Kolizja:', collision.obj.meta.kind);
+        }
+      }
+    }
+
     const horizontalSpeed = Math.sqrt(drone.vel.x * drone.vel.x + drone.vel.z * drone.vel.z);
     if (horizontalSpeed > PHYS.maxSpeed) {
       const scale = PHYS.maxSpeed / horizontalSpeed;
@@ -507,12 +662,14 @@ window.startSimulator = function(worldKey) {
       if (drone.vel.y > 0) drone.vel.y = 0;
     }
 
+    // ─── Kamera ───
     camera.position.copy(drone.pos);
     camera.rotation.order = 'YXZ';
     camera.rotation.y = drone.yaw;
     camera.rotation.x = drone.pitch + cameraAngleRad;
     camera.rotation.z = drone.roll;
 
+    // ─── HUD ───
     const hudThr = document.getElementById('thr');
     if (hudThr) hudThr.textContent = inp.throttle.toFixed(2);
     const hudYaw = document.getElementById('yaw');
@@ -537,15 +694,26 @@ window.startSimulator = function(worldKey) {
   addEventListener('resize', onResize);
 
   simState = {
-    renderer, scene, camera, disposables, onResize, onKeyDown,
+    renderer,
+    scene,
+    camera,
+    disposables,
+    onResize,
+    onKeyDown,
+    collisions,
     getRafId: () => rafId
   };
 
   animate();
 };
 
+// ================================================================
+// ZATRZYMANIE SYMULATORA
+// ================================================================
 window.stopSimulator = function() {
   if (!simState) return;
+
+  console.log('🛑 Zatrzymuję symulator...');
 
   const rafId = simState.getRafId();
   if (rafId !== null) cancelAnimationFrame(rafId);
@@ -566,6 +734,8 @@ window.stopSimulator = function() {
   simState.disposables.materials.forEach(m => m.dispose());
   simState.disposables.textures.forEach(t => t.dispose());
 
+  if (simState.collisions) simState.collisions.clear();
+
   simState.scene.clear();
   if (simState.renderer) simState.renderer.dispose();
 
@@ -573,6 +743,7 @@ window.stopSimulator = function() {
 
   window.onCameraAngleChange = null;
   window.setCameraAngle = null;
+  window.cycleCameraAngle = null;
 
   window.padData.onDisconnect = () => {
     const banner = document.getElementById('reconnectBanner');
@@ -586,4 +757,6 @@ window.stopSimulator = function() {
     const statusEl = document.getElementById('status');
     if (statusEl) statusEl.textContent = t('hud.ok');
   };
+
+  console.log('✅ Symulator zatrzymany');
 };

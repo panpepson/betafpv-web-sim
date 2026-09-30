@@ -16,11 +16,7 @@
 <meta property="og:title" content="🚁 BetaFPV Web Sim — FPV Simulator">
 <meta property="og:description" content="Browser-based FPV drone simulator with realistic racer physics.">
 <meta property="og:url" content="https://betafpv.vercel.app/">
-<meta property="og:image" content="https://betafpv.vercel.app/img/preview.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:type" content="image/png">
-<meta property="og:image:alt" content="BetaFPV Web Sim - FPV drone simulator">
+<meta property="og:image" content="https://betafpv.vercel.app/img/preview.png">
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="pl_PL">
 
@@ -34,7 +30,7 @@
 <meta name="twitter:creator" content="@devPepson">
 <meta name="twitter:title" content="🚁 BetaFPV Web Sim — FPV Simulator">
 <meta name="twitter:description" content="Browser-based FPV drone simulator with realistic racer physics.">
-<meta name="twitter:image" content="https://betafpv.vercel.app/img/preview.jpg">
+<meta name="twitter:image" content="https://betafpv.vercel.app/img/preview.png">
 
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="stylesheet" href="style.css">
@@ -140,6 +136,16 @@
     <div class="step" id="step-done">
       <h2 data-i18n="world.step">Step 4/4 — Choose world</h2>
       <p data-i18n="world.instruction">Calibration complete. Choose difficulty level:</p>
+
+      <!-- ⬇⬇⬇ CHECKBOX KOLIZJI ⬇⬇⬇ -->
+      <div class="options-row">
+        <label class="option-toggle">
+          <input type="checkbox" id="collisionsToggle" checked>
+          <span data-i18n="options.collisions">💥 Collisions</span>
+        </label>
+      </div>
+      <!-- ⬆⬆⬆ KONIEC CHECKBOXa ⬆⬆⬆ -->
+
       <div class="world-grid">
         <div class="world-card" data-world="beginner">
           <h3 data-i18n="world.beginner_title">🟢 EASY</h3>
@@ -153,6 +159,12 @@
           <h3 data-i18n="world.expert_title">🔴 EXPERT</h3>
           <p data-i18n="world.expert_desc">Realistic racer physics...</p>
         </div>
+
+        <div class="world-card" data-world="expert_race">
+          <h3 data-i18n="world.race_title">🏁 RACE</h3>
+          <p data-i18n="world.race_desc">45° camera, zero inertia, tight track. Pure racing.</p>
+        </div>
+
       </div>
       <p class="hint" data-i18n-html="start.shortcuts">...</p>
       <button id="btn-recalibrate" class="danger" data-i18n="world.btn_recalibrate">↻ Remap</button>
@@ -172,8 +184,10 @@
 <script type="module">
   import { initI18n, toggleLang } from './i18n/index.js';
 
+  // 1. Inicjalizacja i18n
   await initI18n();
 
+  // 2. Flaga — zmiana języka
   const langBtn = document.getElementById('langToggle');
   if (langBtn) {
     langBtn.addEventListener('click', () => {
@@ -181,6 +195,22 @@
     });
   }
 
+  // 3. Checkbox kolizji — wczytaj stan z localStorage
+  const collisionsToggle = document.getElementById('collisionsToggle');
+  if (collisionsToggle) {
+    const saved = localStorage.getItem('betafpv_collisions');
+    if (saved !== null) {
+      collisionsToggle.checked = saved === 'true';
+    }
+    window.__collisionsEnabled = collisionsToggle.checked;
+
+    collisionsToggle.addEventListener('change', () => {
+      window.__collisionsEnabled = collisionsToggle.checked;
+      localStorage.setItem('betafpv_collisions', collisionsToggle.checked);
+    });
+  }
+
+  // 4. Dopiero teraz załaduj main.js i calibration.js
   await import('./main.js');
   await import('./calibration.js');
 </script>

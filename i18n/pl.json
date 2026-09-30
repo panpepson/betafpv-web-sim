@@ -54,6 +54,8 @@
     "intermediate_desc": "Trening. Więcej drzew i bramek, większa zwrotność i prędkość.",
     "expert_title": "🔴 EKSPERT",
     "expert_desc": "Realistyczna fizyka racera: przechył → siła pozioma, bezwładność kątowa, grawitacja 9.81.",
+    "race_title": "🏁 RACE",
+    "race_desc": "Kamera 45°, zero bezwładności, ciasny tor. Czysty wyścig.",
     "btn_recalibrate": "↻ Mapuj ponownie"
   },
   "hud": {
@@ -88,5 +90,9 @@
     "left_stick": "LEWY",
     "right_stick": "PRAWY",
     "footer": "SA = kąt kamery FPV (0° / 20° / 35°)"
-  }
+  },
+"options": {
+  "collisions": "💥 Kolizje"
+}
+
 }

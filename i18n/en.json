@@ -54,6 +54,8 @@
     "intermediate_desc": "Training. More trees and gates, higher agility and speed.",
     "expert_title": "🔴 EXPERT",
     "expert_desc": "Realistic racer physics: tilt → horizontal force, angular inertia, 9.81 gravity.",
+    "race_title": "🏁 RACE",
+    "race_desc": "45° camera, zero inertia, tight track. Pure racing.",
     "btn_recalibrate": "↻ Remap"
   },
   "hud": {
@@ -88,5 +90,8 @@
     "left_stick": "LEFT",
     "right_stick": "RIGHT",
     "footer": "SA = FPV camera angle (0° / 20° / 35°)"
-  }
+  },
+"options": {
+  "collisions": "💥 Collisions"
+}
 }

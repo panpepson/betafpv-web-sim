@@ -159,7 +159,7 @@ body {
 /* ─── Wybór planszy ─── */
 .world-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px; margin: 20px 0;
 }
 .world-card {
@@ -187,6 +187,16 @@ body {
   border: 2px solid #f00; background: #1a0a0a;
 }
 .world-card[data-world="expert"] h3 { color: #f00; }
+
+.world-card[data-world="expert_race"] {
+  border: 2px solid #ff00ff;
+  background: #1a0a1a;
+}
+.world-card[data-world="expert_race"] h3 {
+  color: #ff00ff;
+}
+
+
 
 /* ─── HUD ─── */
 #hud {
@@ -240,3 +250,42 @@ body {
   text-align: center; font-family: monospace;
 }
 #pauseIndicator.hidden { display: none; }
+
+/* ─── Toggle opcji (checkbox) ─── */
+.options-row {
+  margin: 15px 0;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.option-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 14px;
+  color: #0f0;
+  user-select: none;
+}
+
+.option-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #0f0;
+  cursor: pointer;
+}
+
+/* ─── Flash przy kolizji ─── */
+#hud.collision {
+  background: rgba(255, 0, 0, 0.5);
+  border-color: #f00;
+  color: #fff;
+  animation: collisionFlash 0.3s ease-out;
+}
+
+@keyframes collisionFlash {
+  0%   { background: rgba(255, 0, 0, 0.9); }
+  100% { background: rgba(0, 0, 0, 0.5); }
+}

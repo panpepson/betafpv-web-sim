@@ -557,26 +557,24 @@ function applySavedCalibration(saved, assignedPairs) {
 // ================================================================
 // KĄT KAMERY — klawisz K / przełącznik CAMERA
 // ================================================================
-window.cameraAngles = [0, 20, 35];
-window.cameraAngleIndex = 0;
+// Uwaga: `window.cycleCameraAngle` jest teraz definiowane w main.js
+// (per tryb — RACE ma inne kąty niż pozostałe).
+// calibration.js tylko ustawia domyślną wartość w HUD przed startem symulatora
+// oraz obsługuje przełącznik CAMERA (bezpośrednie ustawienie kąta).
 
-window.cycleCameraAngle = function() {
-  window.cameraAngleIndex = (window.cameraAngleIndex + 1) % window.cameraAngles.length;
-  const angle = window.cameraAngles[window.cameraAngleIndex];
+const camEl = document.getElementById('camAngle');
+if (camEl) camEl.textContent = '0°';
 
-  const camEl = document.getElementById('camAngle');
-  if (camEl) camEl.textContent = angle + '°';
-
-  if (window.onCameraAngleChange) window.onCameraAngleChange(angle);
-};
-
+// ─── Przełącznik CAMERA (SA/SB/SC) — bezpośrednie ustawienie kąta ───
+// UWAGA: to działa TYLKO gdy symulator jest uruchomiony.
+// Gdy symulator jest w menu, `window.onCameraAngleChange` nie istnieje,
+// więc funkcja tylko aktualizuje HUD.
 window.setCameraAngle = function(angleDeg) {
   const camEl = document.getElementById('camAngle');
   if (camEl) camEl.textContent = angleDeg + '°';
 
   if (window.onCameraAngleChange) window.onCameraAngleChange(angleDeg);
 };
-
 // ================================================================
 // WYBÓR PLANSZY
 // ================================================================
