@@ -44,6 +44,8 @@
   <div><span data-i18n="hud.pitch">Pitch:</span>    <span id="pit">0.00</span></div>
   <div><span data-i18n="hud.altitude">Altitude:</span> <span id="alt">0.0</span> m</div>
   <div><span data-i18n="hud.speed">Speed:</span> <span id="spd">0.0</span> m/s</div>
+    <div id="gate-counter">Gates: 0/0</div>
+    <div id="gate-timer">00:00.000</div>
   <div><span data-i18n="hud.status">Status:</span>   <span id="status">OK</span></div>
   <div><span data-i18n="hud.camera">Camera:</span>   <span id="camAngle">0°</span></div>
 </div>
@@ -180,7 +182,7 @@
   }
 }
 </script>
-
+<button id="mute-btn" title="Mute" style="position:fixed;bottom:16px;right:16px;z-index:9999;">🔊</button>
 <script type="module">
   import { initI18n, toggleLang } from './i18n/index.js';
 

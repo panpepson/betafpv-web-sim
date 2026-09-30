@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { t } from './i18n/index.js';
 import { CollisionSystem } from './modules/collisions.js';
+import { GateTracker }    from './modules/gates.js';
+import { MotorAudio }     from './modules/audio.js';
 
 // ================================================================
 // KONFIGURACJA PLANSZ
@@ -150,7 +152,7 @@ const WORLDS = {
     name: 'RACE — wyścigowy (45° kamera, zero inercji)',
     physicsMode: 'realistic',
     cameraAngle: 45,
-    cameraAngles: [20, 35, 45],          // ← KĄTY DLA RACE
+    cameraAngles: [20, 35, 45],
     skyTop: 0x1a2a52,
     skyBottom: 0x6a8aa8,
     fogNear: 40,
@@ -204,6 +206,41 @@ const WORLDS = {
 };
 
 let simState = null;
+
+// ================================================================
+// AUDIO — singleton (F4)
+// ================================================================
+const motorAudio = new MotorAudio({
+  baseFreq: 60,
+  maxFreq: 280,
+  baseGain: 0.02,
+  maxGain: 0.14,
+  baseCutoff: 400,
+  maxCutoff: 2800
+});
+
+// Init audio przy pierwszej interakcji użytkownika (autoplay policy)
+let __audioInitOnce = false;
+async function ensureAudioInit() {
+  if (__audioInitOnce) return;
+  __audioInitOnce = true;
+  try { await motorAudio.init(); } catch (e) { console.warn('[audio] init failed', e); }
+}
+document.addEventListener('pointerdown', ensureAudioInit, { once: true });
+document.addEventListener('keydown',     ensureAudioInit, { once: true });
+
+// Przycisk mute
+(function setupMuteButton() {
+  const btn = document.getElementById('mute-btn');
+  if (!btn) return;
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await ensureAudioInit();
+    const muted = !motorAudio.muted;
+    motorAudio.setMuted(muted);
+    btn.textContent = muted ? '🔇' : '🔊';
+  });
+})();
 
 // ================================================================
 // SYMULATOR
@@ -301,7 +338,6 @@ window.startSimulator = function(worldKey) {
     scene.add(hill);
     track(hill);
 
-    // ─── Collider (Box — prostopadłościan obejmujący półkulę) ───
     const hillRadius = h[3];
     const hillHeight = h[3] * h[4];
     collisions.addBox(
@@ -350,7 +386,6 @@ window.startSimulator = function(worldKey) {
 
     group.position.set(x, 0, z);
 
-    // ─── Collider ───
     collisions.addSphere(
       new THREE.Vector3(x, 5 * scale, z),
       2.5 * scale,
@@ -380,7 +415,8 @@ window.startSimulator = function(worldKey) {
   }
   cfg.boxes.forEach(b => makeBox(b[0], b[1], b[2], b[3], b[4], b[5]));
 
-  // ─── Bramki ───
+  // ─── Bramki (F1 — zbieramy meshe do gateMeshes) ───
+  const gateMeshes = [];
   function makeGate(x, y, z, rotY) {
     const g = new THREE.Group();
     const geo = new THREE.TorusGeometry(3, 0.3, 8, 24);
@@ -392,8 +428,52 @@ window.startSimulator = function(worldKey) {
     scene.add(g);
     disposables.geometries.push(geo);
     disposables.materials.push(mat);
+
+    // Metadane dla GateTracker — promień 3, grubość 0.3 (TorusGeometry)
+    g.userData.isGate = true;
+    gateMeshes.push(g);
   }
   cfg.gates.forEach(g => makeGate(g[0], g[1], g[2], g[3]));
+
+  // ─── F1: GateTracker ───
+  let gateTracker = new GateTracker(gateMeshes, {
+    droneRadius: 0.6,        // promień drona dla detekcji przejścia
+    ringRadius: 3.0,         // TorusGeometry(3, 0.3) → R=3
+    ringThickness: 0.3,      // grubość obręczy
+    restitution: 0.45,
+    passCooldownMs: 600
+  });
+
+  const gateCounterEl = document.getElementById('gate-counter');
+  const gateTimerEl   = document.getElementById('gate-timer');
+
+  function formatTime(ms) {
+    const total = Math.max(0, ms | 0);
+    const m = Math.floor(total / 60000);
+    const s = Math.floor((total % 60000) / 1000);
+    const mm = total % 1000;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(mm).padStart(3,'0')}`;
+  }
+
+  gateTracker.onProgress = ({ passed, total, timeMs, finished }) => {
+    if (!gateCounterEl || !gateTimerEl) return;
+    const gateLabel = (t && typeof t === 'function' && t('hud.gates')) || 'Gates';
+    gateCounterEl.textContent = `${gateLabel}: ${passed}/${total}`;
+    gateTimerEl.textContent = formatTime(timeMs);
+    gateCounterEl.classList.toggle('finished', !!finished);
+    gateTimerEl.classList.toggle('finished', !!finished);
+  };
+
+  gateTracker.onGatePassed = () => {
+    motorAudio.beep(880, 0.12, 0.09);
+  };
+
+  gateTracker.onGateHit = () => {
+    motorAudio.thud();
+  };
+
+  // Pierwszy render HUD
+  gateTracker._emitProgress();
 
   // ─── DRON ───
   const drone = {
@@ -435,9 +515,6 @@ window.startSimulator = function(worldKey) {
   let cameraAngleDeg = cfg.cameraAngle || 0;
   let cameraAngleRad = cameraAngleDeg * Math.PI / 180;
 
-  // ─── Kąty kamery per tryb ───
-  // Domyślnie: 0, 20, 35 (dla beginner/intermediate/expert)
-  // Dla RACE: 20, 35, 45
   const cameraAnglesList = cfg.cameraAngles || [0, 20, 35];
   let cameraAngleIndex = cameraAnglesList.indexOf(cameraAngleDeg);
   if (cameraAngleIndex < 0) cameraAngleIndex = 0;
@@ -455,15 +532,14 @@ window.startSimulator = function(worldKey) {
     cameraAngleRad = angleDeg * Math.PI / 180;
   };
 
-  // ─── Cykl kąta kamery dla tego trybu ───
   window.cycleCameraAngle = function() {
     cameraAngleIndex = (cameraAngleIndex + 1) % cameraAnglesList.length;
     const angle = cameraAnglesList[cameraAngleIndex];
     cameraAngleDeg = angle;
     cameraAngleRad = angle * Math.PI / 180;
 
-    const camEl = document.getElementById('camAngle');
-    if (camEl) camEl.textContent = angle + '°';
+    const camElLocal = document.getElementById('camAngle');
+    if (camElLocal) camElLocal.textContent = angle + '°';
 
     console.log(`📷 Kąt kamery (${worldKey}): ${angle}°`);
   };
@@ -505,6 +581,15 @@ window.startSimulator = function(worldKey) {
       if (window.cycleCameraAngle) window.cycleCameraAngle();
       return;
     }
+    // F4 — mute toggle
+    if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') {
+      e.preventDefault();
+      const muted = !motorAudio.muted;
+      motorAudio.setMuted(muted);
+      const btn = document.getElementById('mute-btn');
+      if (btn) btn.textContent = muted ? '🔇' : '🔊';
+      return;
+    }
   };
 
   addEventListener('keydown', onKeyDown);
@@ -538,18 +623,14 @@ window.startSimulator = function(worldKey) {
     drone.targetPitch = -inp.pitch * PHYS.maxTiltAngle;
     drone.targetRoll  =  inp.roll  * PHYS.maxTiltAngle;
 
-    // Yaw
     const targetYawRate = inp.yaw * PHYS.yawRateReal;
     drone.yawRate += (targetYawRate - drone.yawRate) * PHYS.angularDamping * dt;
     drone.yaw += drone.yawRate * dt;
 
-    // ─── Pitch / Roll ───
     if (PHYS.angularInertia >= 0.999) {
-      // RACE MODE — zero bezwładności, natychmiastowe ustawienie kątów
       drone.pitch = drone.targetPitch;
       drone.roll  = drone.targetRoll;
     } else {
-      // Expert — zwykła bezwładność
       const pitchError = drone.targetPitch - drone.pitch;
       const rollError  = drone.targetRoll  - drone.roll;
 
@@ -564,11 +645,8 @@ window.startSimulator = function(worldKey) {
       drone.roll  += drone.rollRate  * dt;
     }
 
-    // ─── THROTTLE ───
     const throttle01 = (inp.throttle + 1) / 2;
     const hoverRatio = throttle01 / PHYS.hoverThrottle;
-
-    // ─── CLAMP: ogranicz hoverRatio do 2.0 ───
     const clampedHoverRatio = Math.max(0, Math.min(2.0, hoverRatio));
     const thrust = clampedHoverRatio * (-PHYS.gravity);
 
@@ -586,7 +664,6 @@ window.startSimulator = function(worldKey) {
 
     drone.vel.y += PHYS.gravity * dt;
 
-    // ─── Opór powietrza ───
     const speed = drone.vel.length();
     if (speed > 0.001) {
       const dragLinear = PHYS.airDrag * speed;
@@ -611,6 +688,8 @@ window.startSimulator = function(worldKey) {
 
     const isPaused = pausedByKey || pausedByDisconnect;
     if (isPaused) {
+      // F4 — cisza przy pauzie
+      motorAudio.update(0, false, true);
       renderer.render(scene, camera);
       return;
     }
@@ -625,7 +704,7 @@ window.startSimulator = function(worldKey) {
 
     drone.pos.addScaledVector(drone.vel, dt);
 
-    // ─── KOLIZJE ───
+    // ─── KOLIZJE (drzewa / boxy / górki) ───
     const collisionsEnabled = (worldKey === 'expert' || worldKey === 'expert_race')
       ? true
       : (window.__collisionsEnabled !== false);
@@ -641,6 +720,19 @@ window.startSimulator = function(worldKey) {
         if (collision.obj.meta && collision.obj.meta.kind) {
           console.log('💥 Kolizja:', collision.obj.meta.kind);
         }
+      }
+    }
+
+    // ─── F1: BRAMKI (przejście + kolizja z obręczą) ───
+    if (gateTracker) {
+      const gateHits = gateTracker.update(drone.pos, dt, now);
+      if (collisionsEnabled && gateHits.length) {
+        for (const hit of gateHits) {
+          // Odbicie B — jak w systemie kolizji
+          drone.vel.copy(collisions.reflect(drone.vel, hit.normal, hit.restitution));
+          drone.pos.addScaledVector(hit.normal, hit.penetration + 0.01);
+        }
+        triggerCollisionFlash();
       }
     }
 
@@ -683,6 +775,9 @@ window.startSimulator = function(worldKey) {
     const hudSpd = document.getElementById('spd');
     if (hudSpd) hudSpd.textContent = drone.vel.length().toFixed(1);
 
+    // ─── F4: DŹWIĘK SILNIKÓW ───
+    motorAudio.update(inp.throttle, true, false);
+
     renderer.render(scene, camera);
   }
 
@@ -701,6 +796,7 @@ window.startSimulator = function(worldKey) {
     onResize,
     onKeyDown,
     collisions,
+    gateTracker,
     getRafId: () => rafId
   };
 
@@ -725,6 +821,15 @@ window.stopSimulator = function() {
   if (ch) ch.classList.add('hidden');
   const pi = document.getElementById('pauseIndicator');
   if (pi) pi.classList.add('hidden');
+
+  // F4 — cisza przy stopie
+  motorAudio.setMuted(true);
+
+  // F1 — zwolnij tracker
+  if (simState.gateTracker) {
+    simState.gateTracker.dispose();
+    simState.gateTracker = null;
+  }
 
   if (simState.renderer && simState.renderer.domElement) {
     simState.renderer.domElement.remove();

@@ -68,7 +68,11 @@
     "status": "Status:",
     "camera": "Kamera:",
     "ok": "OK",
-    "disconnected": "ROZŁĄCZONY"
+    "disconnected": "ROZŁĄCZONY",
+    "gates": "Bramki",
+    "gatesFinished": "Meta!",
+    "mute": "Wycisz",
+    "unmute": "Włącz dźwięk"
   },
   "pause": {
     "title": "⏸️ PAUZA",

@@ -68,7 +68,11 @@
     "status": "Status:",
     "camera": "Camera:",
     "ok": "OK",
-    "disconnected": "DISCONNECTED"
+    "disconnected": "DISCONNECTED",
+    "gates": "Gates",
+    "gatesFinished": "Finish!",
+    "mute": "Mute",
+    "unmute": "Unmute"
   },
   "pause": {
     "title": "⏸️ PAUSED",
