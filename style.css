@@ -13,10 +13,12 @@ body {
 /* ─── Overlay / panel ─── */
 #overlay {
   position: fixed; inset: 0; z-index: 100;
-  background: rgba(0,0,0,0.96);
+  background: #000; 
   display: flex; align-items: center; justify-content: center;
   color: #0f0; overflow-y: auto;
 }
+
+
 #overlay.hidden { display: none; }
 
 #panel {
@@ -318,3 +320,24 @@ body {
   border-color: #00ffcc;
   box-shadow: 0 0 12px #00ffcc66;
 }
+
+
+/* ─── Wideo w tle ─── */
+#bgVideo {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+#bgShade {                          /* przyciemnienie, żeby zielony tekst był czytelny */
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1;
+}
+#panel {
+  z-index: 2;
+  background: rgba(10, 10, 10, 0.82);   /* lekko prześwitujący panel */
+  backdrop-filter: blur(4px);
+}
+
+

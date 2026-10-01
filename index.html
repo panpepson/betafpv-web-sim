@@ -73,6 +73,16 @@
 </div>
 
 <div id="overlay">
+
+  <video id="bgVideo" autoplay muted loop playsinline preload="auto"
+         poster="img/poster.jpg" aria-hidden="true">
+    <source src="video/bg.webm" type="video/webm">
+    <source src="video/bg.mp4" type="video/mp4">
+  </video>
+  <div id="bgShade"></div>
+
+
+
   <div id="panel">
 
     <!-- ─── Flaga języka — prawy górny róg panelu ─── -->
@@ -80,7 +90,7 @@
 
     <!-- KROK 1: Start -->
     <div class="step active" id="step-start">
-      <h1 data-i18n="start.title">🚁 BetaFPV Web Sim</h1>
+      <h1 data-i18n="start.title">🚁 BetaFPV Web Sim 💤</h1>
       <p data-i18n-html="start.welcome">Welcome! ...</p>
 
       <p class="repo-link">
@@ -185,6 +195,32 @@
 <button id="mute-btn" title="Mute" style="position:fixed;bottom:16px;right:16px;z-index:9999;">🔊</button>
 <script type="module">
   import { initI18n, toggleLang } from './i18n/index.js';
+
+
+
+// ─── Wideo w tle ───
+const bgVideo   = document.getElementById('bgVideo');
+const overlayEl = document.getElementById('overlay');
+
+if (bgVideo && overlayEl) {
+  const saveData  = navigator.connection && navigator.connection.saveData;
+  const reduced   = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const smallScr  = matchMedia('(max-width: 768px)').matches;
+
+  if (saveData || reduced || smallScr) {
+    // telefon / oszczędzanie transferu: tylko obraz poster, bez pobierania wideo
+    bgVideo.removeAttribute('autoplay');
+    bgVideo.preload = 'none';
+    bgVideo.load();
+  } else {
+    // zatrzymaj wideo, gdy overlay jest ukryty (trwa symulacja), wznów po powrocie do menu
+    new MutationObserver(() => {
+      if (overlayEl.classList.contains('hidden')) bgVideo.pause();
+      else bgVideo.play().catch(() => {});
+    }).observe(overlayEl, { attributes: true, attributeFilter: ['class'] });
+  }
+}
+
 
   // 1. Inicjalizacja i18n
   await initI18n();

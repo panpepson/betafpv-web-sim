@@ -6,7 +6,7 @@
     "description": "Przeglądarkowy symulator drona FPV sterowany fizycznym padem BetaFPV LiteRadio 2 SE przez WebHID API. Three.js, realistyczna fizyka racera, 3 poziomy trudności."
   },
   "start": {
-    "title": "🚁 BetaFPV Web Sim",
+    "title": "🚁💤 BetaFPV Web Sim 💤",
     "welcome": "Witaj! Zanim zaczniesz latać, musimy <b>zmapować Twój pad</b> i <b>skalibrować zakresy drążków</b>.",
     "repo_label": "📦 <b>Repozytorium projektu:</b>",
     "warning": "<b>Uwaga:</b> mapowanie trzeba zrobić <b>za każdym razem po odświeżeniu strony</b>. Twój pad przy każdym podłączeniu generuje sygnał na innych parach bajtów — dlatego nie da się zapisać mapowania na stałe. <b>Kalibracja</b> natomiast zostanie zapamiętana w przeglądarce — dopóki pad pozostanie podłączony.",

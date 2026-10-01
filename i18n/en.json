@@ -6,7 +6,7 @@
     "description": "Browser-based FPV drone simulator controlled with a physical BetaFPV LiteRadio 2 SE radio via WebHID API. Three.js, realistic racer physics, 3 difficulty levels."
   },
   "start": {
-    "title": "🚁 BetaFPV Web Sim",
+    "title": "🚁💤 BetaFPV Web Sim 💤",
     "welcome": "Welcome! Before you start flying, we need to <b>map your radio</b> and <b>calibrate the stick ranges</b>.",
     "repo_label": "📦 <b>Project repository:</b>",
     "warning": "<b>Note:</b> mapping must be done <b>every time after refreshing the page</b>. Your radio generates signals on different byte pairs each time it connects — that's why mapping cannot be saved permanently. <b>Calibration</b> is remembered in the browser — as long as the radio stays connected.",
