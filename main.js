@@ -208,6 +208,22 @@ const WORLDS = {
 let simState = null;
 
 // ================================================================
+// ANTYSZUM — wygładzanie wejścia i kamery (globalne)
+// ================================================================
+const INPUT_SMOOTHING  = 0.60;   // 0..1 (wyżej = gładszy obraz, większe opóźnienie)
+const CAMERA_SMOOTHING = 0.75;   // 0..1 (dotyczy pitch/roll; yaw bez wygładzania)
+const INPUT_DEADZONE   = 0.02;   // próg drążka, poniżej = 0
+
+const smoothedInput = { throttle: 0, yaw: 0, roll: 0, pitch: 0 };
+const cameraSmooth  = { pitch: 0, roll: 0, yaw: 0, initialized: false };
+
+function deadzone(v, threshold = INPUT_DEADZONE) {
+  if (Math.abs(v) < threshold) return 0;
+  const sign = Math.sign(v);
+  return sign * ((Math.abs(v) - threshold) / (1 - threshold));
+}
+
+// ================================================================
 // AUDIO — singleton (F4)
 // ================================================================
 const motorAudio = new MotorAudio({
@@ -252,6 +268,13 @@ window.startSimulator = function(worldKey) {
   if (simState) {
     window.stopSimulator();
   }
+
+  // Reset antyszumu przy starcie nowego świata
+  smoothedInput.throttle = 0;
+  smoothedInput.yaw = 0;
+  smoothedInput.roll = 0;
+  smoothedInput.pitch = 0;
+  cameraSmooth.initialized = false;
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(cfg.skyBottom, cfg.fogNear, cfg.fogFar);
@@ -421,6 +444,7 @@ window.startSimulator = function(worldKey) {
     const g = new THREE.Group();
     const geo = new THREE.TorusGeometry(3, 0.3, 8, 24);
     const mat = new THREE.MeshLambertMaterial({ color: 0xff0066 });
+    mat.emissive = new THREE.Color(0x000000); // na start bez emisji
     const ring = new THREE.Mesh(geo, mat);
     ring.castShadow = true;
     g.add(ring);
@@ -429,7 +453,6 @@ window.startSimulator = function(worldKey) {
     disposables.geometries.push(geo);
     disposables.materials.push(mat);
 
-    // Metadane dla GateTracker — promień 3, grubość 0.3 (TorusGeometry)
     g.userData.isGate = true;
     gateMeshes.push(g);
   }
@@ -437,11 +460,12 @@ window.startSimulator = function(worldKey) {
 
   // ─── F1: GateTracker ───
   let gateTracker = new GateTracker(gateMeshes, {
-    droneRadius: 0.6,        // promień drona dla detekcji przejścia
-    ringRadius: 3.0,         // TorusGeometry(3, 0.3) → R=3
-    ringThickness: 0.3,      // grubość obręczy
+    droneRadius: 0.6,
+    ringRadius: 3.0,
+    ringThickness: 0.3,
     restitution: 0.45,
-    passCooldownMs: 600
+    passCooldownMs: 600,
+    passedColor: 0x00ff66
   });
 
   const gateCounterEl = document.getElementById('gate-counter');
@@ -465,11 +489,15 @@ window.startSimulator = function(worldKey) {
   };
 
   gateTracker.onGatePassed = () => {
-    motorAudio.beep(880, 0.12, 0.09);
+    motorAudio.success();      // arpeggio C-E-G-C
   };
 
   gateTracker.onGateHit = () => {
     motorAudio.thud();
+  };
+
+  gateTracker.onFinish = () => {
+    motorAudio.fanfare();      // fanfara na metę
   };
 
   // Pierwszy render HUD
@@ -628,9 +656,11 @@ window.startSimulator = function(worldKey) {
     drone.yaw += drone.yawRate * dt;
 
     if (PHYS.angularInertia >= 0.999) {
+      // RACE MODE — zero bezwładności, natychmiastowe ustawienie kątów
       drone.pitch = drone.targetPitch;
       drone.roll  = drone.targetRoll;
     } else {
+      // Expert — zwykła bezwładność
       const pitchError = drone.targetPitch - drone.pitch;
       const rollError  = drone.targetRoll  - drone.roll;
 
@@ -683,18 +713,33 @@ window.startSimulator = function(worldKey) {
     rafId = requestAnimationFrame(animate);
 
     const now = performance.now();
-    const dt = Math.min((now - prevTime) / 1000, 0.05);
+    const dt = Math.min((now - prevTime) / 1000, 0.033);   // ← clamp zmniejszony
     prevTime = now;
 
     const isPaused = pausedByKey || pausedByDisconnect;
     if (isPaused) {
-      // F4 — cisza przy pauzie
       motorAudio.update(0, false, true);
       renderer.render(scene, camera);
       return;
     }
 
-    const inp = window.padData.input;
+    // ─── ANTYSZUM: deadzone + LPF na wejściu ───
+    const rawInp = window.padData.input;
+
+    const dzInp = {
+      throttle: rawInp.throttle,
+      yaw:      rawInp.yaw,
+      roll:     deadzone(rawInp.roll, INPUT_DEADZONE),
+      pitch:    deadzone(rawInp.pitch, INPUT_DEADZONE)
+    };
+
+    const a = INPUT_SMOOTHING;
+    smoothedInput.throttle = a * smoothedInput.throttle + (1 - a) * dzInp.throttle;
+    smoothedInput.yaw      = a * smoothedInput.yaw      + (1 - a) * dzInp.yaw;
+    smoothedInput.roll     = a * smoothedInput.roll     + (1 - a) * dzInp.roll;
+    smoothedInput.pitch    = a * smoothedInput.pitch    + (1 - a) * dzInp.pitch;
+
+    const inp = smoothedInput;
 
     if (PHYS.mode === 'realistic') {
       stepPhysicsRealistic(dt, inp);
@@ -728,7 +773,6 @@ window.startSimulator = function(worldKey) {
       const gateHits = gateTracker.update(drone.pos, dt, now);
       if (collisionsEnabled && gateHits.length) {
         for (const hit of gateHits) {
-          // Odbicie B — jak w systemie kolizji
           drone.vel.copy(collisions.reflect(drone.vel, hit.normal, hit.restitution));
           drone.pos.addScaledVector(hit.normal, hit.penetration + 0.01);
         }
@@ -754,12 +798,25 @@ window.startSimulator = function(worldKey) {
       if (drone.vel.y > 0) drone.vel.y = 0;
     }
 
-    // ─── Kamera ───
+    // ─── Kamera (wygładzona) ───
+    if (!cameraSmooth.initialized) {
+      cameraSmooth.pitch = drone.pitch;
+      cameraSmooth.roll  = drone.roll;
+      cameraSmooth.yaw   = drone.yaw;
+      cameraSmooth.initialized = true;
+    }
+
+    const cs = CAMERA_SMOOTHING;
+    cameraSmooth.pitch = cs * cameraSmooth.pitch + (1 - cs) * drone.pitch;
+    cameraSmooth.roll  = cs * cameraSmooth.roll  + (1 - cs) * drone.roll;
+    // yaw bez wygładzania — unikamy efektu "opóźnionej kamery" przy obrotach
+    cameraSmooth.yaw = drone.yaw;
+
     camera.position.copy(drone.pos);
     camera.rotation.order = 'YXZ';
-    camera.rotation.y = drone.yaw;
-    camera.rotation.x = drone.pitch + cameraAngleRad;
-    camera.rotation.z = drone.roll;
+    camera.rotation.y = cameraSmooth.yaw;
+    camera.rotation.x = cameraSmooth.pitch + cameraAngleRad;
+    camera.rotation.z = cameraSmooth.roll;
 
     // ─── HUD ───
     const hudThr = document.getElementById('thr');
@@ -776,7 +833,8 @@ window.startSimulator = function(worldKey) {
     if (hudSpd) hudSpd.textContent = drone.vel.length().toFixed(1);
 
     // ─── F4: DŹWIĘK SILNIKÓW ───
-    motorAudio.update(inp.throttle, true, false);
+    const throttle01ForAudio = (inp.throttle + 1) / 2;
+    motorAudio.update(throttle01ForAudio, true, false);
 
     renderer.render(scene, camera);
   }
@@ -825,8 +883,9 @@ window.stopSimulator = function() {
   // F4 — cisza przy stopie
   motorAudio.setMuted(true);
 
-  // F1 — zwolnij tracker
+  // F1 — reset kolorów + zwolnij tracker
   if (simState.gateTracker) {
+    simState.gateTracker.gates.forEach(g => g.resetColor && g.resetColor());
     simState.gateTracker.dispose();
     simState.gateTracker = null;
   }
@@ -845,6 +904,13 @@ window.stopSimulator = function() {
   if (simState.renderer) simState.renderer.dispose();
 
   simState = null;
+
+  // Reset antyszumu (na wszelki wypadek)
+  smoothedInput.throttle = 0;
+  smoothedInput.yaw = 0;
+  smoothedInput.roll = 0;
+  smoothedInput.pitch = 0;
+  cameraSmooth.initialized = false;
 
   window.onCameraAngleChange = null;
   window.setCameraAngle = null;
