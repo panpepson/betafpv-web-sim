@@ -236,12 +236,11 @@ const motorAudio = new MotorAudio({
 });
 
 // ================================================================
-// AUDIO — muzyka tła (MP3)
+// AUDIO — muzyka tła (MP3 / OGG)
 // ================================================================
 class BgMusic {
   constructor() {
     this.el = document.getElementById('bgMusic');
-    this.muted = false;
     this.userPaused = false;
 
     if (!this.el) {
@@ -249,6 +248,7 @@ class BgMusic {
       this.el.id = 'bgMusic';
       this.el.loop = true;
       this.el.preload = 'auto';
+      this.el.muted = true;      // ← CICHY START (autoplay muted = dozwolone)
       const src1 = document.createElement('source');
       src1.src = 'audio/bg-music.ogg';
       src1.type = 'audio/ogg';
@@ -260,39 +260,49 @@ class BgMusic {
       document.body.appendChild(this.el);
     }
 
+    // Wymuś muted, żeby autoplay był dozwolony (niezależnie od tego, co jest w HTML)
+    this.el.muted = true;
     this.el.volume = 0.25;
 
-    // Element ma autoplay+muted w HTML — próbujemy "cichy start"
-    // Po pierwszej interakcji zdejmiemy muted.
-    if (this.el.muted) {
-      // spróbujmy od razu odpalić (autoplay muted jest dozwolony)
-      this.el.play().catch(() => {});
-    }
+    // ─── Natychmiastowa próba startu (muted) ───
+    // Po F5 to zadziała, bo muted autoplay jest dozwolony.
+    // Gdy user kliknie cokolwiek → unmute() zdejmie muted.
+    this.el.play().catch((e) => {
+      console.warn('[music] autoplay muted deferred:', e.message);
+    });
   }
 
   async play() {
     if (this.userPaused) return;
     try {
-      // NIE ruszamy currentTime — pozwól grać od razu
       await this.el.play();
     } catch (e) {
       console.warn('[music] play deferred:', e.message);
     }
   }
 
-  // Wywołaj po pierwszej interakcji użytkownika —
-  // zdejmuje muted z elementu (muzyka już leci, tylko cicho)
-  unmute() {
-    if (this.el) this.el.muted = false;
-  }
   pause() {
     try { this.el.pause(); } catch (_) {}
   }
 
-  setMuted(m) {
-    this.muted = !!m;
-    this.el.muted = this.muted;
-    if (!this.muted) this.play();
+  /**
+   * Zdejmuje muted z elementu audio — muzyka już leci cicho, teraz robi się słyszalna.
+   * Wywołaj przy pierwszej interakcji użytkownika.
+   */
+  unmute() {
+    if (!this.el) return;
+    this.el.muted = false;
+    // Dokończ jeśli z jakiegoś powodu nie gra (np. user zamknął kartę i wrócił)
+    if (this.el.paused) this.play();
+  }
+
+  setUserMuted(m) {
+    this.userPaused = !!m;
+    if (this.userPaused) {
+      this.pause();
+    } else {
+      this.play();
+    }
   }
 }
 
@@ -312,7 +322,10 @@ function applyAudioState() {
   const musicOff  = audioState.masterMute || audioState.musicMuted;
 
   motorAudio.setMuted(engineOff);
-  bgMusic.setMuted(musicOff);
+
+  // Muzyka: sterujemy przez userPaused (nie przez muted, bo muted jest zarezerwowany dla autoplay)
+  bgMusic.setUserMuted(musicOff);
+
   updateAudioHud();
 }
 
@@ -338,31 +351,29 @@ function updateAudioHud() {
   const mm = localStorage.getItem('betafpv_music_mute');
   if (em === 'true') audioState.engineMuted = true;
   if (mm === 'true') audioState.musicMuted = true;
+  // Uwaga: applyAudioState woła bgMusic.setUserMuted — a to pauzuje muzykę
+  // jeśli user ją wyciszył. To OK — respektujemy preferencję.
   applyAudioState();
 })();
 
-// ─── Natychmiastowa próba startu muzyki ───
-// Może się nie udać (autoplay policy) — wtedy pointerdown/keydown ją odblokuje.
-if (!audioState.masterMute && !audioState.musicMuted) {
-  bgMusic.play();
-}
-
-// ─── Init AudioContext + muzyka przy pierwszej interakcji ───
+// ─── Odblokowanie audio przy pierwszej interakcji ───
 let __audioInitOnce = false;
 async function ensureAudioInit() {
   if (__audioInitOnce) return;
   __audioInitOnce = true;
   try { await motorAudio.init(); } catch (e) { console.warn('[audio] init failed', e); }
 
-  // Zdejmij muted z elementu audio — muzyka już leci (autoplay muted w HTML)
+  // Zdejmij muted z muzyki (cichy start → słyszalny)
   bgMusic.unmute();
 
   applyAudioState();
-  // Dokończ jeśli z jakiegoś powodu nie gra
-  if (!audioState.masterMute && !audioState.musicMuted) bgMusic.play();
 }
+// Wiele typów interakcji — pewność że złapiemy pierwszą
 document.addEventListener('pointerdown', ensureAudioInit, { once: true });
 document.addEventListener('keydown',     ensureAudioInit, { once: true });
+document.addEventListener('touchstart',  ensureAudioInit, { once: true });
+document.addEventListener('mousemove',   ensureAudioInit, { once: true });
+document.addEventListener('scroll',      ensureAudioInit, { once: true });
 
 // ================================================================
 // PRZYCISKI AUDIO (MUTE / MUSIC)
@@ -373,7 +384,6 @@ document.addEventListener('keydown',     ensureAudioInit, { once: true });
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       await ensureAudioInit();
-      // Przycisk = master mute (M)
       audioState.masterMute = !audioState.masterMute;
       applyAudioState();
     });
@@ -401,8 +411,6 @@ window.startSimulator = function(worldKey) {
   if (simState) {
     window.stopSimulator();
   }
-
-  // UWAGA: muzyka gra cały czas — nie pauzujemy jej przy starcie lotu
 
   smoothedInput.throttle = 0;
   smoothedInput.yaw = 0;
@@ -625,11 +633,7 @@ window.startSimulator = function(worldKey) {
   gateTracker.onGatePassed = () => { motorAudio.success(); };
   gateTracker.onGateHit    = () => { motorAudio.thud();    };
   gateTracker.onFinish     = () => { motorAudio.fanfare(); };
-  gateTracker.onGateReset = () => {
-    // Krótki, krótki "pyk" — informuje że bramka wróciła na czerwony
-    motorAudio.beep(330, 0.08, 0.06);
-  };
-
+  gateTracker.onGateReset  = () => { motorAudio.beep(330, 0.08, 0.06); };
 
   gateTracker._emitProgress();
 
@@ -735,7 +739,6 @@ window.startSimulator = function(worldKey) {
       if (window.cycleCameraAngle) window.cycleCameraAngle();
       return;
     }
-    // R — restart okrążenia
     if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') {
       e.preventDefault();
       if (gateTracker) {
@@ -745,14 +748,12 @@ window.startSimulator = function(worldKey) {
       }
       return;
     }
-    // M — MASTER MUTE (silnik + muzyka, bramki dalej słychać)
     if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') {
       e.preventDefault();
       audioState.masterMute = !audioState.masterMute;
       applyAudioState();
       return;
     }
-    // N — MUTE ENGINE (tylko silnik)
     if (e.code === 'KeyN' || e.key === 'n' || e.key === 'N') {
       e.preventDefault();
       audioState.engineMuted = !audioState.engineMuted;
@@ -760,7 +761,6 @@ window.startSimulator = function(worldKey) {
       applyAudioState();
       return;
     }
-    // B — MUTE BACKGROUND MUSIC (tylko muzyka)
     if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
       e.preventDefault();
       audioState.musicMuted = !audioState.musicMuted;
@@ -1062,8 +1062,6 @@ window.stopSimulator = function() {
     const statusEl = document.getElementById('status');
     if (statusEl) statusEl.textContent = t('hud.ok');
   };
-
-  // UWAGA: muzyka gra cały czas — NIE pauzujemy jej przy wyjściu z symulatora
 
   console.log('✅ Symulator zatrzymany');
 };
