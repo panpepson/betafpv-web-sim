@@ -44,8 +44,12 @@
   <div><span data-i18n="hud.pitch">Pitch:</span>    <span id="pit">0.00</span></div>
   <div><span data-i18n="hud.altitude">Altitude:</span> <span id="alt">0.0</span> m</div>
   <div><span data-i18n="hud.speed">Speed:</span> <span id="spd">0.0</span> m/s</div>
-    <div id="gate-counter">Gates: 0/0</div>
-    <div id="gate-timer">00:00.000</div>
+  <div id="gate-counter">Gates: 0/0</div>
+  <div id="gate-timer">00:00.000</div>
+  <div id="audio-status">
+    <span id="a-engine" title="Engine sound">🔊</span>
+    <span id="a-music"  title="Background music">🎵</span>
+  </div>
   <div><span data-i18n="hud.status">Status:</span>   <span id="status">OK</span></div>
   <div><span data-i18n="hud.camera">Camera:</span>   <span id="camAngle">0°</span></div>
 </div>
@@ -81,7 +85,10 @@
   </video>
   <div id="bgShade"></div>
 
-
+  <!-- ─── Muzyka tła (MP3) ─── -->
+  <audio id="bgMusic" loop preload="auto" aria-hidden="true">
+    <source src="audio/bg-music-small.ogg" type="audio/ogg">
+  </audio>
 
   <div id="panel">
 
@@ -149,14 +156,12 @@
       <h2 data-i18n="world.step">Step 4/4 — Choose world</h2>
       <p data-i18n="world.instruction">Calibration complete. Choose difficulty level:</p>
 
-      <!-- ⬇⬇⬇ CHECKBOX KOLIZJI ⬇⬇⬇ -->
       <div class="options-row">
         <label class="option-toggle">
           <input type="checkbox" id="collisionsToggle" checked>
           <span data-i18n="options.collisions">💥 Collisions</span>
         </label>
       </div>
-      <!-- ⬆⬆⬆ KONIEC CHECKBOXa ⬆⬆⬆ -->
 
       <div class="world-grid">
         <div class="world-card" data-world="beginner">
@@ -192,35 +197,37 @@
   }
 }
 </script>
-<button id="mute-btn" title="Mute" style="position:fixed;bottom:16px;right:16px;z-index:9999;">🔊</button>
+
+<button id="mute-btn" title="M — mute all / N — engine only" style="position:fixed;bottom:16px;right:16px;z-index:9999;">🔊</button>
+<button id="music-btn" title="B — background music" style="position:fixed;bottom:16px;right:70px;z-index:9999;">🎵</button>
+
 <script type="module">
   import { initI18n, toggleLang } from './i18n/index.js';
 
+  // ─── Wideo w tle + muzyka tła ───
+  const bgVideo   = document.getElementById('bgVideo');
+  const bgMusicEl = document.getElementById('bgMusic');
+  const overlayEl = document.getElementById('overlay');
 
+  if (bgVideo && overlayEl) {
+    const saveData  = navigator.connection && navigator.connection.saveData;
+    const reduced   = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const smallScr  = matchMedia('(max-width: 768px)').matches;
 
-// ─── Wideo w tle ───
-const bgVideo   = document.getElementById('bgVideo');
-const overlayEl = document.getElementById('overlay');
-
-if (bgVideo && overlayEl) {
-  const saveData  = navigator.connection && navigator.connection.saveData;
-  const reduced   = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const smallScr  = matchMedia('(max-width: 768px)').matches;
-
-  if (saveData || reduced || smallScr) {
-    // telefon / oszczędzanie transferu: tylko obraz poster, bez pobierania wideo
-    bgVideo.removeAttribute('autoplay');
-    bgVideo.preload = 'none';
-    bgVideo.load();
-  } else {
-    // zatrzymaj wideo, gdy overlay jest ukryty (trwa symulacja), wznów po powrocie do menu
-    new MutationObserver(() => {
-      if (overlayEl.classList.contains('hidden')) bgVideo.pause();
-      else bgVideo.play().catch(() => {});
-    }).observe(overlayEl, { attributes: true, attributeFilter: ['class'] });
+    if (saveData || reduced || smallScr) {
+      bgVideo.removeAttribute('autoplay');
+      bgVideo.preload = 'none';
+      bgVideo.load();
+    } else {
+      new MutationObserver(() => {
+        if (overlayEl.classList.contains('hidden')) {
+          bgVideo.pause();
+        } else {
+          bgVideo.play().catch(() => {});
+        }
+      }).observe(overlayEl, { attributes: true, attributeFilter: ['class'] });
+    }
   }
-}
-
 
   // 1. Inicjalizacja i18n
   await initI18n();

@@ -1,21 +1,18 @@
 // modules/audio.js
 // F4 — Dźwięk silników (Web Audio API, bez assetów)
-// Sygnał: sawtooth + square (detune) + biały szum → lowpass → gain → destination
+// + efekty: beep / success / fanfare / thud (ZAWSZE słyszalne, ignorują mute silnika)
 //
 // Uwaga: AudioContext wymaga interakcji użytkownika (autoplay policy).
-// Wołaj init() z handlera kliknięcia / pointerdown.
 
 export class MotorAudio {
   constructor(opts = {}) {
-    // === Silnik ===
-    this.baseFreq = opts.baseFreq ?? 60;         // Hz przy throttle=0
-    this.maxFreq  = opts.maxFreq  ?? 280;        // Hz przy throttle=1
+    this.baseFreq = opts.baseFreq ?? 60;
+    this.maxFreq  = opts.maxFreq  ?? 280;
     this.baseGain = opts.baseGain ?? 0.02;
     this.maxGain  = opts.maxGain  ?? 0.14;
     this.baseCutoff = opts.baseCutoff ?? 400;
     this.maxCutoff  = opts.maxCutoff  ?? 2800;
 
-    // === Stan ===
     this.ctx = null;
     this.osc1 = null;
     this.osc2 = null;
@@ -24,12 +21,9 @@ export class MotorAudio {
     this.filter = null;
     this.gain = null;
     this.ready = false;
-    this.muted = false;
+    this.muted = false;   // dotyczy TYLKO silnika
   }
 
-  // ================================================================
-  // INICJALIZACJA (wymaga gestu użytkownika)
-  // ================================================================
   async init() {
     if (this.ready) return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -43,18 +37,15 @@ export class MotorAudio {
       try { await this.ctx.resume(); } catch (_) {}
     }
 
-    // === Osc 1: sawtooth — baza ===
     this.osc1 = this.ctx.createOscillator();
     this.osc1.type = 'sawtooth';
     this.osc1.frequency.value = this.baseFreq;
 
-    // === Osc 2: square — detune dla "metalicznego" pogłosu wielu śmigieł ===
     this.osc2 = this.ctx.createOscillator();
     this.osc2.type = 'square';
     this.osc2.frequency.value = this.baseFreq * 1.02;
     this.osc2.detune.value = 8;
 
-    // === Szum: biały szum → bandpass dla "świstu" ===
     const bufferSize = 2 * this.ctx.sampleRate;
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
@@ -75,24 +66,20 @@ export class MotorAudio {
     this.noise.connect(noiseFilter);
     noiseFilter.connect(this.noiseGain);
 
-    // === Lowpass: im wyższy throttle, tym jaśniejszy dźwięk ===
     this.filter = this.ctx.createBiquadFilter();
     this.filter.type = 'lowpass';
     this.filter.frequency.value = this.baseCutoff;
     this.filter.Q.value = 0.8;
 
-    // === Główny gain ===
     this.gain = this.ctx.createGain();
     this.gain.gain.value = 0.0;
 
-    // === Routing ===
     this.osc1.connect(this.filter);
     this.osc2.connect(this.filter);
     this.noiseGain.connect(this.filter);
     this.filter.connect(this.gain);
     this.gain.connect(this.ctx.destination);
 
-    // === Start ===
     this.osc1.start();
     this.osc2.start();
     this.noise.start();
@@ -100,19 +87,24 @@ export class MotorAudio {
     this.ready = true;
   }
 
-  // ================================================================
-  // UPDATE — wołaj co klatkę z pętli fizyki
-  // ================================================================
   /**
+   * Silnik — respektuje this.muted.
    * @param {number} throttle 0..1
-   * @param {boolean} armed   czy silniki aktywne (false = cisza)
+   * @param {boolean} armed   czy silniki aktywne
    * @param {boolean} paused  pauza = cisza
    */
   update(throttle, armed = true, paused = false) {
-    if (!this.ready || this.muted) return;
+    if (!this.ready) return;
     const t = this.ctx.currentTime;
-    const active = armed && !paused;
 
+    // Jeśli muted — wyzeruj gain, ale nie przerywaj oscylatorów
+    if (this.muted) {
+      this.gain.gain.setTargetAtTime(0, t, 0.05);
+      this.noiseGain.gain.setTargetAtTime(0, t, 0.05);
+      return;
+    }
+
+    const active = armed && !paused;
     const th = Math.max(0, Math.min(1, throttle));
     const freq         = this.baseFreq + th * (this.maxFreq - this.baseFreq);
     const gainTarget   = active ? (this.baseGain + th * (this.maxGain - this.baseGain)) : 0;
@@ -127,15 +119,16 @@ export class MotorAudio {
   }
 
   // ================================================================
-  // BEEP — krótki sygnał (start / UI)
+  // EFEKTY — ZAWSZE SŁYSZALNE (ignorują this.muted)
   // ================================================================
+
+  /** Krótki beep (start / UI / restart) */
   beep(freq = 880, duration = 0.12, gain = 0.08) {
-    if (!this.ready || this.muted) return;
+    if (!this.ready) return;
     const t = this.ctx.currentTime;
 
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
-
     osc.type = 'sine';
     osc.frequency.value = freq;
 
@@ -149,12 +142,10 @@ export class MotorAudio {
     osc.stop(t + duration + 0.02);
   }
 
-  // ================================================================
-  // SUCCESS — dźwięk zaliczenia bramki (arpeggio C-E-G-C)
-  // ================================================================
+  /** Dźwięk zaliczenia bramki — arpeggio C-E-G-C */
   success() {
-    if (!this.ready || this.muted) return;
-    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    if (!this.ready) return;
+    const notes = [523.25, 659.25, 783.99, 1046.5];
     const t0 = this.ctx.currentTime;
     const step = 0.09;
 
@@ -162,7 +153,6 @@ export class MotorAudio {
       const t = t0 + i * step;
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
-
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, t);
 
@@ -178,12 +168,10 @@ export class MotorAudio {
     });
   }
 
-  // ================================================================
-  // FANFARE — dłuższa fanfara na metę
-  // ================================================================
+  /** Fanfara zakończenia toru */
   fanfare() {
-    if (!this.ready || this.muted) return;
-    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5]; // C5 E5 G5 C6 E6
+    if (!this.ready) return;
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
     const t0 = this.ctx.currentTime;
     const step = 0.13;
 
@@ -191,7 +179,6 @@ export class MotorAudio {
       const t = t0 + i * step;
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
-
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, t);
 
@@ -207,16 +194,13 @@ export class MotorAudio {
     });
   }
 
-  // ================================================================
-  // THUD — krótki, niski dźwięk przy kolizji z obręczą
-  // ================================================================
+  /** Niski thud przy kolizji z obręczą */
   thud() {
-    if (!this.ready || this.muted) return;
+    if (!this.ready) return;
     const t = this.ctx.currentTime;
 
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
-
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(180, t);
     osc.frequency.exponentialRampToValueAtTime(60, t + 0.15);
@@ -231,11 +215,10 @@ export class MotorAudio {
   }
 
   // ================================================================
-  // MUTE / SUSPEND / RESUME
-  // ================================================================
+
   setMuted(m) {
     this.muted = !!m;
-    if (this.ready && this.gain) {
+    if (this.ready && this.gain && this.muted) {
       this.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
     }
   }
@@ -252,15 +235,11 @@ export class MotorAudio {
     }
   }
 
-  // ================================================================
-  // DISPOSE — pełne zwolnienie zasobów (opcjonalne)
-  // ================================================================
   dispose() {
     try { if (this.osc1) this.osc1.stop(); } catch (_) {}
     try { if (this.osc2) this.osc2.stop(); } catch (_) {}
     try { if (this.noise) this.noise.stop(); } catch (_) {}
     try { if (this.ctx) this.ctx.close(); } catch (_) {}
-
     this.ctx = null;
     this.osc1 = null;
     this.osc2 = null;

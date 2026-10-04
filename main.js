@@ -208,11 +208,11 @@ const WORLDS = {
 let simState = null;
 
 // ================================================================
-// ANTYSZUM — wygładzanie wejścia i kamery (globalne)
+// ANTYSZUM
 // ================================================================
-const INPUT_SMOOTHING  = 0.60;   // 0..1 (wyżej = gładszy obraz, większe opóźnienie)
-const CAMERA_SMOOTHING = 0.75;   // 0..1 (dotyczy pitch/roll; yaw bez wygładzania)
-const INPUT_DEADZONE   = 0.02;   // próg drążka, poniżej = 0
+const INPUT_SMOOTHING  = 0.60;
+const CAMERA_SMOOTHING = 0.75;
+const INPUT_DEADZONE   = 0.02;
 
 const smoothedInput = { throttle: 0, yaw: 0, roll: 0, pitch: 0 };
 const cameraSmooth  = { pitch: 0, roll: 0, yaw: 0, initialized: false };
@@ -224,7 +224,7 @@ function deadzone(v, threshold = INPUT_DEADZONE) {
 }
 
 // ================================================================
-// AUDIO — singleton (F4)
+// AUDIO — silnik
 // ================================================================
 const motorAudio = new MotorAudio({
   baseFreq: 60,
@@ -235,27 +235,160 @@ const motorAudio = new MotorAudio({
   maxCutoff: 2800
 });
 
-// Init audio przy pierwszej interakcji użytkownika (autoplay policy)
+// ================================================================
+// AUDIO — muzyka tła (MP3)
+// ================================================================
+class BgMusic {
+  constructor() {
+    this.el = document.getElementById('bgMusic');
+    this.muted = false;
+    this.userPaused = false;
+
+    if (!this.el) {
+      this.el = document.createElement('audio');
+      this.el.id = 'bgMusic';
+      this.el.loop = true;
+      this.el.preload = 'auto';
+      const src1 = document.createElement('source');
+      src1.src = 'audio/bg-music.ogg';
+      src1.type = 'audio/ogg';
+      const src2 = document.createElement('source');
+      src2.src = 'audio/bg-music.mp3';
+      src2.type = 'audio/mpeg';
+      this.el.appendChild(src1);
+      this.el.appendChild(src2);
+      document.body.appendChild(this.el);
+    }
+
+    this.el.volume = 0.25;
+
+    // Element ma autoplay+muted w HTML — próbujemy "cichy start"
+    // Po pierwszej interakcji zdejmiemy muted.
+    if (this.el.muted) {
+      // spróbujmy od razu odpalić (autoplay muted jest dozwolony)
+      this.el.play().catch(() => {});
+    }
+  }
+
+  async play() {
+    if (this.userPaused) return;
+    try {
+      // NIE ruszamy currentTime — pozwól grać od razu
+      await this.el.play();
+    } catch (e) {
+      console.warn('[music] play deferred:', e.message);
+    }
+  }
+
+  // Wywołaj po pierwszej interakcji użytkownika —
+  // zdejmuje muted z elementu (muzyka już leci, tylko cicho)
+  unmute() {
+    if (this.el) this.el.muted = false;
+  }
+  pause() {
+    try { this.el.pause(); } catch (_) {}
+  }
+
+  setMuted(m) {
+    this.muted = !!m;
+    this.el.muted = this.muted;
+    if (!this.muted) this.play();
+  }
+}
+
+const bgMusic = new BgMusic();
+
+// ================================================================
+// MASTER MUTE — wycisza silnik + muzykę (bramki dalej słychać)
+// ================================================================
+const audioState = {
+  masterMute: false,
+  engineMuted: false,   // preferencja użytkownika (N)
+  musicMuted: false     // preferencja użytkownika (B)
+};
+
+function applyAudioState() {
+  const engineOff = audioState.masterMute || audioState.engineMuted;
+  const musicOff  = audioState.masterMute || audioState.musicMuted;
+
+  motorAudio.setMuted(engineOff);
+  bgMusic.setMuted(musicOff);
+  updateAudioHud();
+}
+
+function updateAudioHud() {
+  const engineOff = audioState.masterMute || audioState.engineMuted;
+  const musicOff  = audioState.masterMute || audioState.musicMuted;
+
+  const aEngine = document.getElementById('a-engine');
+  const aMusic  = document.getElementById('a-music');
+  if (aEngine) aEngine.classList.toggle('muted', engineOff);
+  if (aMusic)  aMusic.classList.toggle('muted', musicOff);
+
+  const btn = document.getElementById('mute-btn');
+  if (btn) btn.textContent = audioState.masterMute ? '🔇' : (audioState.engineMuted ? '🔕' : '🔊');
+
+  const mbtn = document.getElementById('music-btn');
+  if (mbtn) mbtn.textContent = audioState.musicMuted ? '🔕' : '🎵';
+}
+
+// Wczytaj preferencje z localStorage
+(function loadAudioPrefs() {
+  const em = localStorage.getItem('betafpv_engine_mute');
+  const mm = localStorage.getItem('betafpv_music_mute');
+  if (em === 'true') audioState.engineMuted = true;
+  if (mm === 'true') audioState.musicMuted = true;
+  applyAudioState();
+})();
+
+// ─── Natychmiastowa próba startu muzyki ───
+// Może się nie udać (autoplay policy) — wtedy pointerdown/keydown ją odblokuje.
+if (!audioState.masterMute && !audioState.musicMuted) {
+  bgMusic.play();
+}
+
+// ─── Init AudioContext + muzyka przy pierwszej interakcji ───
 let __audioInitOnce = false;
 async function ensureAudioInit() {
   if (__audioInitOnce) return;
   __audioInitOnce = true;
   try { await motorAudio.init(); } catch (e) { console.warn('[audio] init failed', e); }
+
+  // Zdejmij muted z elementu audio — muzyka już leci (autoplay muted w HTML)
+  bgMusic.unmute();
+
+  applyAudioState();
+  // Dokończ jeśli z jakiegoś powodu nie gra
+  if (!audioState.masterMute && !audioState.musicMuted) bgMusic.play();
 }
 document.addEventListener('pointerdown', ensureAudioInit, { once: true });
 document.addEventListener('keydown',     ensureAudioInit, { once: true });
 
-// Przycisk mute
-(function setupMuteButton() {
+// ================================================================
+// PRZYCISKI AUDIO (MUTE / MUSIC)
+// ================================================================
+(function setupAudioButtons() {
   const btn = document.getElementById('mute-btn');
-  if (!btn) return;
-  btn.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    await ensureAudioInit();
-    const muted = !motorAudio.muted;
-    motorAudio.setMuted(muted);
-    btn.textContent = muted ? '🔇' : '🔊';
-  });
+  if (btn) {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await ensureAudioInit();
+      // Przycisk = master mute (M)
+      audioState.masterMute = !audioState.masterMute;
+      applyAudioState();
+    });
+  }
+
+  const musicBtn = document.getElementById('music-btn');
+  if (musicBtn) {
+    musicBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await ensureAudioInit();
+      audioState.musicMuted = !audioState.musicMuted;
+      localStorage.setItem('betafpv_music_mute', String(audioState.musicMuted));
+      applyAudioState();
+    });
+  }
 })();
 
 // ================================================================
@@ -269,7 +402,8 @@ window.startSimulator = function(worldKey) {
     window.stopSimulator();
   }
 
-  // Reset antyszumu przy starcie nowego świata
+  // UWAGA: muzyka gra cały czas — nie pauzujemy jej przy starcie lotu
+
   smoothedInput.throttle = 0;
   smoothedInput.yaw = 0;
   smoothedInput.roll = 0;
@@ -438,13 +572,13 @@ window.startSimulator = function(worldKey) {
   }
   cfg.boxes.forEach(b => makeBox(b[0], b[1], b[2], b[3], b[4], b[5]));
 
-  // ─── Bramki (F1 — zbieramy meshe do gateMeshes) ───
+  // ─── Bramki ───
   const gateMeshes = [];
   function makeGate(x, y, z, rotY) {
     const g = new THREE.Group();
     const geo = new THREE.TorusGeometry(3, 0.3, 8, 24);
     const mat = new THREE.MeshLambertMaterial({ color: 0xff0066 });
-    mat.emissive = new THREE.Color(0x000000); // na start bez emisji
+    mat.emissive = new THREE.Color(0x000000);
     const ring = new THREE.Mesh(geo, mat);
     ring.castShadow = true;
     g.add(ring);
@@ -458,7 +592,7 @@ window.startSimulator = function(worldKey) {
   }
   cfg.gates.forEach(g => makeGate(g[0], g[1], g[2], g[3]));
 
-  // ─── F1: GateTracker ───
+  // ─── GateTracker ───
   let gateTracker = new GateTracker(gateMeshes, {
     droneRadius: 0.6,
     ringRadius: 3.0,
@@ -488,19 +622,15 @@ window.startSimulator = function(worldKey) {
     gateTimerEl.classList.toggle('finished', !!finished);
   };
 
-  gateTracker.onGatePassed = () => {
-    motorAudio.success();      // arpeggio C-E-G-C
+  gateTracker.onGatePassed = () => { motorAudio.success(); };
+  gateTracker.onGateHit    = () => { motorAudio.thud();    };
+  gateTracker.onFinish     = () => { motorAudio.fanfare(); };
+  gateTracker.onGateReset = () => {
+    // Krótki, krótki "pyk" — informuje że bramka wróciła na czerwony
+    motorAudio.beep(330, 0.08, 0.06);
   };
 
-  gateTracker.onGateHit = () => {
-    motorAudio.thud();
-  };
 
-  gateTracker.onFinish = () => {
-    motorAudio.fanfare();      // fanfara na metę
-  };
-
-  // Pierwszy render HUD
   gateTracker._emitProgress();
 
   // ─── DRON ───
@@ -565,17 +695,13 @@ window.startSimulator = function(worldKey) {
     const angle = cameraAnglesList[cameraAngleIndex];
     cameraAngleDeg = angle;
     cameraAngleRad = angle * Math.PI / 180;
-
     const camElLocal = document.getElementById('camAngle');
     if (camElLocal) camElLocal.textContent = angle + '°';
-
     console.log(`📷 Kąt kamery (${worldKey}): ${angle}°`);
   };
 
-  window.padData.onDisconnect = () => {
-    pausedByDisconnect = true;
-  };
-  window.padData.onReconnect = () => {
+  window.padData.onDisconnect = () => { pausedByDisconnect = true; };
+  window.padData.onReconnect  = () => {
     pausedByDisconnect = false;
     prevTime = performance.now();
   };
@@ -609,13 +735,37 @@ window.startSimulator = function(worldKey) {
       if (window.cycleCameraAngle) window.cycleCameraAngle();
       return;
     }
-    // F4 — mute toggle
+    // R — restart okrążenia
+    if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') {
+      e.preventDefault();
+      if (gateTracker) {
+        gateTracker.restart();
+        motorAudio.beep(440, 0.15, 0.10);
+        console.log('🔄 Restart okrążenia');
+      }
+      return;
+    }
+    // M — MASTER MUTE (silnik + muzyka, bramki dalej słychać)
     if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') {
       e.preventDefault();
-      const muted = !motorAudio.muted;
-      motorAudio.setMuted(muted);
-      const btn = document.getElementById('mute-btn');
-      if (btn) btn.textContent = muted ? '🔇' : '🔊';
+      audioState.masterMute = !audioState.masterMute;
+      applyAudioState();
+      return;
+    }
+    // N — MUTE ENGINE (tylko silnik)
+    if (e.code === 'KeyN' || e.key === 'n' || e.key === 'N') {
+      e.preventDefault();
+      audioState.engineMuted = !audioState.engineMuted;
+      localStorage.setItem('betafpv_engine_mute', String(audioState.engineMuted));
+      applyAudioState();
+      return;
+    }
+    // B — MUTE BACKGROUND MUSIC (tylko muzyka)
+    if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
+      e.preventDefault();
+      audioState.musicMuted = !audioState.musicMuted;
+      localStorage.setItem('betafpv_music_mute', String(audioState.musicMuted));
+      applyAudioState();
       return;
     }
   };
@@ -645,7 +795,7 @@ window.startSimulator = function(worldKey) {
   }
 
   // ================================================================
-  // FIZYKA — REALISTIC (expert + RACE)
+  // FIZYKA — REALISTIC
   // ================================================================
   function stepPhysicsRealistic(dt, inp) {
     drone.targetPitch = -inp.pitch * PHYS.maxTiltAngle;
@@ -656,11 +806,9 @@ window.startSimulator = function(worldKey) {
     drone.yaw += drone.yawRate * dt;
 
     if (PHYS.angularInertia >= 0.999) {
-      // RACE MODE — zero bezwładności, natychmiastowe ustawienie kątów
       drone.pitch = drone.targetPitch;
       drone.roll  = drone.targetRoll;
     } else {
-      // Expert — zwykła bezwładność
       const pitchError = drone.targetPitch - drone.pitch;
       const rollError  = drone.targetRoll  - drone.roll;
 
@@ -713,7 +861,7 @@ window.startSimulator = function(worldKey) {
     rafId = requestAnimationFrame(animate);
 
     const now = performance.now();
-    const dt = Math.min((now - prevTime) / 1000, 0.033);   // ← clamp zmniejszony
+    const dt = Math.min((now - prevTime) / 1000, 0.033);
     prevTime = now;
 
     const isPaused = pausedByKey || pausedByDisconnect;
@@ -723,7 +871,6 @@ window.startSimulator = function(worldKey) {
       return;
     }
 
-    // ─── ANTYSZUM: deadzone + LPF na wejściu ───
     const rawInp = window.padData.input;
 
     const dzInp = {
@@ -749,26 +896,19 @@ window.startSimulator = function(worldKey) {
 
     drone.pos.addScaledVector(drone.vel, dt);
 
-    // ─── KOLIZJE (drzewa / boxy / górki) ───
     const collisionsEnabled = (worldKey === 'expert' || worldKey === 'expert_race')
       ? true
       : (window.__collisionsEnabled !== false);
 
     if (collisionsEnabled) {
       const collision = collisions.check(drone.pos, 0.5);
-
       if (collision) {
         drone.vel.copy(collisions.reflect(drone.vel, collision.normal, 0.4));
         drone.pos.addScaledVector(collision.normal, collision.depth + 0.01);
         triggerCollisionFlash();
-
-        if (collision.obj.meta && collision.obj.meta.kind) {
-          console.log('💥 Kolizja:', collision.obj.meta.kind);
-        }
       }
     }
 
-    // ─── F1: BRAMKI (przejście + kolizja z obręczą) ───
     if (gateTracker) {
       const gateHits = gateTracker.update(drone.pos, dt, now);
       if (collisionsEnabled && gateHits.length) {
@@ -798,7 +938,7 @@ window.startSimulator = function(worldKey) {
       if (drone.vel.y > 0) drone.vel.y = 0;
     }
 
-    // ─── Kamera (wygładzona) ───
+    // ─── Kamera ───
     if (!cameraSmooth.initialized) {
       cameraSmooth.pitch = drone.pitch;
       cameraSmooth.roll  = drone.roll;
@@ -809,7 +949,6 @@ window.startSimulator = function(worldKey) {
     const cs = CAMERA_SMOOTHING;
     cameraSmooth.pitch = cs * cameraSmooth.pitch + (1 - cs) * drone.pitch;
     cameraSmooth.roll  = cs * cameraSmooth.roll  + (1 - cs) * drone.roll;
-    // yaw bez wygładzania — unikamy efektu "opóźnionej kamery" przy obrotach
     cameraSmooth.yaw = drone.yaw;
 
     camera.position.copy(drone.pos);
@@ -832,7 +971,7 @@ window.startSimulator = function(worldKey) {
     const hudSpd = document.getElementById('spd');
     if (hudSpd) hudSpd.textContent = drone.vel.length().toFixed(1);
 
-    // ─── F4: DŹWIĘK SILNIKÓW ───
+    // ─── Dźwięk silnika ───
     const throttle01ForAudio = (inp.throttle + 1) / 2;
     motorAudio.update(throttle01ForAudio, true, false);
 
@@ -880,10 +1019,6 @@ window.stopSimulator = function() {
   const pi = document.getElementById('pauseIndicator');
   if (pi) pi.classList.add('hidden');
 
-  // F4 — cisza przy stopie
-  motorAudio.setMuted(true);
-
-  // F1 — reset kolorów + zwolnij tracker
   if (simState.gateTracker) {
     simState.gateTracker.gates.forEach(g => g.resetColor && g.resetColor());
     simState.gateTracker.dispose();
@@ -905,7 +1040,6 @@ window.stopSimulator = function() {
 
   simState = null;
 
-  // Reset antyszumu (na wszelki wypadek)
   smoothedInput.throttle = 0;
   smoothedInput.yaw = 0;
   smoothedInput.roll = 0;
@@ -928,6 +1062,8 @@ window.stopSimulator = function() {
     const statusEl = document.getElementById('status');
     if (statusEl) statusEl.textContent = t('hud.ok');
   };
+
+  // UWAGA: muzyka gra cały czas — NIE pauzujemy jej przy wyjściu z symulatora
 
   console.log('✅ Symulator zatrzymany');
 };

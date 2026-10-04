@@ -14,7 +14,7 @@
     "process_1": "<b>Mapping:</b> move the sticks, the program shows which byte pairs move, you assign them to drone functions.",
     "process_2": "<b>Calibration:</b> the program asks you to move each function — it automatically measures min/max.",
     "process_3": "<b>World selection:</b> Easy / Medium / Expert.",
-    "shortcuts": "🎮 <b>In-flight shortcuts:</b> <b>P</b> — pause, <b>Space</b> — OSD crosshair, <b>K</b> — camera angle.",
+    "shortcuts": "🎮 <b>In-flight shortcuts:</b> <b>P</b> — pause, <b>Space</b> — OSD crosshair, <b>K</b> — camera angle, <b>R</b> — restart lap, <b>M</b> — mute all, <b>N</b> — mute engine, <b>B</b> — mute music.",
     "btn_start": "Start mapping"
   },
   "connect": {
@@ -72,7 +72,10 @@
     "gates": "Gates",
     "gatesFinished": "Finish!",
     "mute": "Mute",
-    "unmute": "Unmute"
+    "unmute": "Unmute",
+    "engine": "Engine",
+    "music": "Music",
+    "master": "Master"
   },
   "pause": {
     "title": "⏸️ PAUSED",
@@ -95,7 +98,7 @@
     "right_stick": "RIGHT",
     "footer": "SA = FPV camera angle (0° / 20° / 35°)"
   },
-"options": {
-  "collisions": "💥 Collisions"
-}
+  "options": {
+    "collisions": "💥 Collisions"
+  }
 }

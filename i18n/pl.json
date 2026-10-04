@@ -14,7 +14,7 @@
     "process_1": "<b>Mapowanie:</b> ruszasz drążkami, program pokazuje które pary bajtów się ruszają, Ty przypisujesz je do funkcji drona.",
     "process_2": "<b>Kalibracja:</b> program prosi o ruszanie każdą funkcją — automatycznie mierzy min/max.",
     "process_3": "<b>Wybór planszy:</b> Łatwa / Średnia / Ekspert.",
-    "shortcuts": "🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD, <b>K</b> — kąt kamery.",
+    "shortcuts": "🎮 <b>Skróty w locie:</b> <b>P</b> — pauza, <b>Spacja</b> — celownik OSD, <b>K</b> — kąt kamery, <b>R</b> — restart okrążenia, <b>M</b> — wycisz wszystko, <b>N</b> — wycisz silnik, <b>B</b> — wycisz muzykę.",
     "btn_start": "Rozpocznij mapowanie"
   },
   "connect": {
@@ -72,7 +72,10 @@
     "gates": "Bramki",
     "gatesFinished": "Meta!",
     "mute": "Wycisz",
-    "unmute": "Włącz dźwięk"
+    "unmute": "Włącz dźwięk",
+    "engine": "Silnik",
+    "music": "Muzyka",
+    "master": "Master"
   },
   "pause": {
     "title": "⏸️ PAUZA",
@@ -95,8 +98,7 @@
     "right_stick": "PRAWY",
     "footer": "SA = kąt kamery FPV (0° / 20° / 35°)"
   },
-"options": {
-  "collisions": "💥 Kolizje"
-}
-
+  "options": {
+    "collisions": "💥 Kolizje"
+  }
 }
