@@ -92,7 +92,7 @@ Spacja - celownik
 
 
 
-##🛠️ Jak dodawać przeszkody do torów:
+## 🛠️ Jak dodawać przeszkody do torów:
    - worlds/info_pl.txt (polski)
    - worlds/info_en.txt (English)
 
