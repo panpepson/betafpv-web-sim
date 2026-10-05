@@ -1,0 +1,340 @@
+========================================================================
+  BETA FPV WEB SIM — HOW TO ADD OBSTACLES TO TRACKS
+  Version: 1.0  |  Directory: worlds/
+========================================================================
+
+This file explains how to manually edit tracks — add trees, boxes,
+hills, gates and water — without touching main.js or any game code.
+
+After every change to a track file (e.g. expert_race.js):
+  1. Save the file.
+  2. Refresh the browser (Ctrl+Shift+R to bypass cache).
+  3. Pick the world in the menu — your change is live.
+
+If you make a typo (e.g. missing "x" field), the console (F12) will
+show a RED error with the EXACT path, e.g.:
+  [gate] missing field "x"
+Fix it and save — nothing breaks, the simulator just won't start
+until you fix it.
+
+
+------------------------------------------------------------------------
+1. DIRECTORY STRUCTURE
+------------------------------------------------------------------------
+
+worlds/
+├── _schema.js         ← generator + validation (DO NOT EDIT)
+├── index.js           ← world registry (add new track here)
+├── beginner.js        ← 🟢 EASY
+├── intermediate.js    ← 🟡 MEDIUM
+├── expert.js          ← 🔴 EXPERT
+├── expert_race.js     ← 🏁 RACE
+└── info_en.txt        ← this file
+
+Each track is a .js file that exports an object via makeWorld({...}).
+Fields can be omitted — the generator fills in defaults.
+
+
+------------------------------------------------------------------------
+2. COORDINATE SYSTEM
+------------------------------------------------------------------------
+
+All positions are given as { x, y, z } in METERS.
+
+    +Y = UP     (altitude)
+    -Z = FORWARD (direction the drone faces at spawn)
+    +Z = BACKWARD
+    -X = LEFT
+    +X = RIGHT
+
+Example:
+    { x: 10, y: 4, z: -25 }   ← 10 m right, 4 m up, 25 m forward
+
+The drone spawns at "spawn" (see section 3), always facing -Z.
+
+
+------------------------------------------------------------------------
+3. TRACK FILE SECTIONS
+------------------------------------------------------------------------
+
+Every track file has these sections (order matters only for
+readability — the generator accepts any order):
+
+    id          — unique identifier (used in menu, e.g. "expert_race")
+    name        — display name in logs
+    description — short description (optional)
+
+    physics     — flight parameters (gravity, thrust, drag)
+    camera      — FPV camera angle + list of angles for K key
+    sky         — sky color (top / bottom)
+    fog         — fog (near / far)
+    spawn       — drone starting position
+
+    trees       — list of trees   [{ x, z, scale }]
+    gates       — list of gates   [{ x, y, z, yaw }]
+    boxes       — list of boxes   [{ x, z, w, h, d, color }]
+    hills       — list of hills   [{ x, z, radius, heightScale }]
+    water       — water body (one per track, optional)
+
+
+------------------------------------------------------------------------
+4. TREES  (trees)
+------------------------------------------------------------------------
+
+Fields:
+    x      — X position
+    z      — Z position
+    y      — ignored (tree always sits on ground, y = 0)
+    scale  — scale (1.0 = standard, 0.9 = small, 1.7 = large)
+             ↳ default 1.0
+
+Example:
+    trees: [
+      { x:  15, z: -10, scale: 1.2 },   // medium tree on the right
+      { x: -20, z:  20, scale: 1.0 },   // standard on the left
+      { x:   5, z: -40, scale: 1.7 },   // large tree ahead
+    ]
+
+Collision: sphere at crown center with radius 2.5 * scale.
+You can fly between trees — no trunk collision.
+
+
+------------------------------------------------------------------------
+5. GATES  (gates)
+------------------------------------------------------------------------
+
+Fields:
+    x      — X position (center of ring)
+    y      — height of ring center above ground (default 3)
+    z      — Z position
+    yaw    — rotation around Y axis (radians, default 0)
+
+Note: yaw is in RADIANS, not degrees!
+    Math.PI / 6   =  30°
+    Math.PI / 4   =  45°
+    Math.PI / 3   =  60°
+    Math.PI       = 180°
+    -Math.PI / 4  = -45°
+
+Gate is a torus with 3 m radius and 0.3 m thickness.
+Drone must fly through the center (diameter ~5.4 m).
+Order in the array = pass order (drone must fly them in sequence).
+
+Example:
+    gates: [
+      { x:   0, y: 2, z:  -10, yaw: 0 },              // start, straight
+      { x:   8, y: 3, z:  -22, yaw: Math.PI / 6 },    // 30° turn right
+      { x:  -6, y: 4, z:  -35, yaw: -Math.PI / 4 },   // 45° turn left
+      { x:  15, y: 5, z:  -48, yaw: Math.PI / 3 },    // sharp 60° turn
+    ]
+
+Tip: the first gate is often just ahead of spawn (z ≈ -10 to -20),
+so the drone knows where to fly immediately.
+
+
+------------------------------------------------------------------------
+6. BOXES  (boxes)
+------------------------------------------------------------------------
+
+Fields:
+    x      — X position of center
+    z      — Z position of center
+    w      — width (X axis, default 4)
+    h      — height (Y axis, default 3) — box sits on ground (y = h/2)
+    d      — depth (Z axis, default 4)
+    color  — HEX color (default 0xff4444 = red)
+
+Useful colors for marking difficulty:
+    0xff4444  — red     (caution!)
+    0xffcc00  — yellow
+    0xcc44ff  — purple
+    0x44ffff  — cyan
+    0xff8800  — orange
+    0x00ccff  — blue
+    0xff00ff  — magenta
+    0x00ff88  — green
+
+Example:
+    boxes: [
+      { x:   0, z: -18, w: 3, h: 2, d: 3, color: 0xff4444 },
+      { x: -12, z:   8, w: 5, h: 1, d: 5, color: 0xffcc00 },
+      { x:  18, z:  -5, w: 3, h: 3, d: 3, color: 0xcc44ff },
+    ]
+
+Boxes always sit on the ground. You cannot lift them into the air
+(unless you modify main.js — the "y" field doesn't exist).
+
+
+------------------------------------------------------------------------
+7. HILLS  (hills)
+------------------------------------------------------------------------
+
+Fields:
+    x            — X position of center
+    z            — Z position of center
+    y            — ignored (hill always on ground)
+    radius       — base radius (default 30)
+    heightScale  — height multiplier (default 0.5)
+                   ↳ actual height = radius * heightScale
+
+Hill is a hemisphere. Collision = AABB (rectangular bounding box),
+so the drone cannot fly into a hill but may "clip" its corners.
+
+Example:
+    hills: [
+      { x: -70, z:  -80, radius: 30, heightScale: 0.5 },  // height 15 m
+      { x:  90, z: -100, radius: 35, heightScale: 0.6 },  // height 21 m
+    ]
+
+
+------------------------------------------------------------------------
+8. WATER  (water)
+------------------------------------------------------------------------
+
+Optional — one water body per track (or null / omitted).
+
+Fields:
+    x  — X position of center
+    z  — Z position of center
+    w  — width (X axis, default 100)
+    d  — depth (Z axis, default 100)
+
+Water is FLAT (y = 0.15 m above ground) and has no collision — it's
+a visual effect only. You can fly over it.
+
+Example:
+    water: { x: 80, z: 70, w: 140, d: 100 },
+
+To remove water: delete the "water" line or set:
+    water: null,
+
+
+------------------------------------------------------------------------
+9. EXAMPLE — ADDING A SIMPLE OBSTACLE
+------------------------------------------------------------------------
+
+Want to add a large tree 5 m right and 40 m forward from spawn?
+
+Step 1. Open worlds/expert_race.js.
+Step 2. Find the "trees: [" section.
+Step 3. Add a new line BEFORE the closing "],":
+
+    trees: [
+      { x:  15, z:  -5, scale: 1.2 },
+      // ... existing trees ...
+      { x:   5, z: -40, scale: 1.5 },   // ← NEW
+    ],
+
+Step 4. Save the file.
+Step 5. Refresh the browser (Ctrl+Shift+R).
+Step 6. Pick RACE — the tree is there.
+
+
+------------------------------------------------------------------------
+10. EXAMPLE — ENTIRELY NEW TRACK
+------------------------------------------------------------------------
+
+Step 1. Copy worlds/beginner.js → worlds/mytrack.js.
+Step 2. In the new file, change:
+        id:   'mytrack',
+        name: 'MY TRACK — custom',
+Step 3. Edit sections: trees / gates / boxes / hills / spawn / water.
+Step 4. Open worlds/index.js and add:
+
+    import mytrack from './mytrack.js';
+
+    export const WORLDS = {
+      beginner,
+      intermediate,
+      expert,
+      expert_race,
+      mytrack,          // ← NEW
+    };
+
+Step 5. In index.html, in the "world-grid" section, add a card:
+
+    <div class="world-card" data-world="mytrack">
+      <h3>🎨 MY TRACK</h3>
+      <p>Custom test track.</p>
+    </div>
+
+Step 6. In i18n/pl.json and i18n/en.json (optional) add translations
+        for keys world.mytrack_title / world.mytrack_desc — if you
+        use data-i18n instead of static text.
+
+Step 7. Save, refresh, pick "MY TRACK".
+
+
+------------------------------------------------------------------------
+11. COMMON MISTAKES
+------------------------------------------------------------------------
+
+❌ Missing comma between array elements.
+   Correct:
+       trees: [
+         { x: 1, z: 2, scale: 1.0 },   ← comma!
+         { x: 3, z: 4, scale: 1.2 },   ← no comma (last)
+       ],
+
+❌ Using array [x, z, scale] instead of object {x, z, scale}.
+   The generator will NOT accept this (throws "missing field x").
+
+❌ Yaw in degrees instead of radians.
+   45     ← WRONG (treated as 45 radians ≈ 2578°)
+   Math.PI / 4   ← RIGHT
+
+❌ Referring to an undefined variable:
+   { x: START_X, z: -20 }   ← error if START_X not defined
+
+❌ Added track to worlds/index.js but not to index.html —
+   you won't see it in the menu.
+
+❌ Wrong filename in import:
+   import mytrack from './MyTrack.js'   ← case matters
+   File is worlds/mytrack.js (lowercase).
+
+
+------------------------------------------------------------------------
+12. TUNING — WHERE TO CHANGE WHAT
+------------------------------------------------------------------------
+
+Want faster drone?        → physics.thrustFactor: ↑
+Want slower?              → physics.maxSpeed: ↓
+Want lower gravity?       → physics.gravity: -7.5 (less negative)
+Want more drift?          → physics.drag: 0.998 (closer to 1.0)
+
+Starting camera angle:    → camera.angle
+Angles for K key:         → camera.angles: [0, 20, 35, 50]
+
+More on physics: see comments in worlds/_schema.js.
+
+
+------------------------------------------------------------------------
+13. QUICK REFERENCE — FIELDS
+------------------------------------------------------------------------
+
+    TREE:     { x, z, scale? }
+    GATE:     { x, y, z, yaw? }
+    BOX:      { x, z, w?, h?, d?, color? }
+    HILL:     { x, z, radius?, heightScale? }
+    WATER:    { x, z, w?, d? }        (one per track)
+    SPAWN:    { x, y, z }
+    CAMERA:   { angle, angles: [...] }
+
+All values in meters. Yaw in radians.
+
+
+------------------------------------------------------------------------
+14. HELP
+------------------------------------------------------------------------
+
+Problem? Open console (F12) and check red errors — the generator
+prints the EXACT path of the problem, e.g.:
+    [gate] missing field "x"
+    [tree] missing field "z"
+    [makeWorld:mytrack] missing field "name"
+
+Repository: https://github.com/panpepson/betafpv-web-sim
+
+Happy track building! 🚁
+========================================================================

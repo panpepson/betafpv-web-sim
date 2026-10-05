@@ -91,6 +91,12 @@ K - Kamera
 Spacja - celownik
 
 
+
+##🛠️ Jak dodawać przeszkody do torów:
+   - worlds/info_pl.txt (polski)
+   - worlds/info_en.txt (English)
+
+
 ## ❌ Nie działa bezpośrednio
 
 Pady XInput (Xbox, DualShock/DualSense) — WebHID nie ma do nich dostępu ze względów bezpieczeństwa. Wymagana migracja na Gamepad API.

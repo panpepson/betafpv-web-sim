@@ -1,0 +1,340 @@
+========================================================================
+  BETA FPV WEB SIM — JAK DODAWAĆ PRZESZKODY DO TORÓW
+  Wersja: 1.0  |  Katalog: worlds/
+========================================================================
+
+Ten plik wyjaśnia, jak ręcznie edytować tory — dodawać drzewa, boxy,
+górki, bramki i wodę — bez ingerencji w main.js ani w kod gry.
+
+Po każdej zmianie w pliku toru (np. expert_race.js):
+  1. Zapisz plik.
+  2. Odśwież przeglądarkę (Ctrl+Shift+R, żeby ominąć cache).
+  3. Wybierz planszę w menu — Twoja zmiana jest widoczna.
+
+Jeśli zrobisz literówkę (np. brakuje pola "x"), w konsoli (F12) pojawi
+się CZERWONY błąd z DOKŁADNĄ ścieżką, np.:
+  [gate] brak pola "x"
+Popraw i zapisz — nic się nie zepsuje, symulator po prostu się nie uruchomi
+do momentu naprawy.
+
+
+------------------------------------------------------------------------
+1. STRUKTURA KATALOGU
+------------------------------------------------------------------------
+
+worlds/
+├── _schema.js         ← generator + walidacja (NIE EDYTUJ)
+├── index.js           ← rejestr plansz (dodaj tu nowy tor)
+├── beginner.js        ← 🟢 ŁATWA
+├── intermediate.js    ← 🟡 ŚREDNIA
+├── expert.js          ← 🔴 EKSPERT
+├── expert_race.js     ← 🏁 RACE
+└── info_pl.txt        ← ten plik
+
+Każdy tor to plik .js, który eksportuje obiekt przez makeWorld({...}).
+Pola można pomijać — generator uzupełni domyślne wartości.
+
+
+------------------------------------------------------------------------
+2. UKŁAD WSPÓŁRZĘDNYCH
+------------------------------------------------------------------------
+
+Wszystkie pozycje podajemy jako { x, y, z } w METRACH.
+
+    +Y = GÓRA   (wysokość)
+    -Z = PRZÓD  (kierunek, w którym patrzy dron na starcie)
+    +Z = TYŁ
+    -X = LEWO
+    +X = PRAWO
+
+Przykład:
+    { x: 10, y: 4, z: -25 }   ← 10 m w prawo, 4 m w górę, 25 m do przodu
+
+Dron startuje z pozycji "spawn" (patrz sekcja 3), zawsze skierowany w -Z.
+
+
+------------------------------------------------------------------------
+3. SEKCJE PLIKU TORU
+------------------------------------------------------------------------
+
+Każdy plik toru ma następujące sekcje (kolejność ma znaczenie tylko
+dla czytelności — generator przyjmie dowolną):
+
+    id          — unikalny identyfikator (używany w menu, np. "expert_race")
+    name        — nazwa wyświetlana w logu
+    description — krótki opis (opcjonalnie)
+
+    physics     — parametry lotu (grawitacja, ciąg, opory)
+    camera      — kąt kamery FPV + lista kątów do cyklu klawiszem K
+    sky         — kolor nieba (top / bottom)
+    fog         — mgła (near / far)
+    spawn       — pozycja startowa drona
+
+    trees       — lista drzew  [{ x, z, scale }]
+    gates       — lista bramek [{ x, y, z, yaw }]
+    boxes       — lista boxów  [{ x, z, w, h, d, color }]
+    hills       — lista górek [{ x, z, radius, heightScale }]
+    water       — zbiornik wodny (jeden, opcjonalny)
+
+
+------------------------------------------------------------------------
+4. DRZEWA  (trees)
+------------------------------------------------------------------------
+
+Pola:
+    x      — pozycja X
+    z      — pozycja Z
+    y      — ignorowane (drzewo zawsze stoi na ziemi, y = 0)
+    scale  — skala (1.0 = standard, 0.9 = małe, 1.7 = duże)
+             ↳ domyślnie 1.0
+
+Przykład:
+    trees: [
+      { x:  15, z: -10, scale: 1.2 },   // średnie drzewo po prawej
+      { x: -20, z:  20, scale: 1.0 },   // standardowe po lewej
+      { x:   5, z: -40, scale: 1.7 },   // duże drzewo przed dronem
+    ]
+
+Kolizja: sfera w środku korony o promieniu 2.5 * scale.
+Możesz latać między drzewami — nie ma kolizji z pniem.
+
+
+------------------------------------------------------------------------
+5. BRAMKI  (gates)
+------------------------------------------------------------------------
+
+Pola:
+    x      — pozycja X (środek obręczy)
+    y      — wysokość środka obręczy nad ziemią (domyślnie 3)
+    z      — pozycja Z
+    yaw    — obrót wokół osi Y (radiany, domyślnie 0)
+
+Uwaga: yaw podajemy w RADIANACH, nie stopniach!
+    Math.PI / 6   =  30°
+    Math.PI / 4   =  45°
+    Math.PI / 3   =  60°
+    Math.PI       = 180°
+    -Math.PI / 4  = -45°
+
+Bramka to torus o promieniu 3 m i grubości 0.3 m.
+Dron musi przelecieć przez środek (średnica ~5.4 m).
+Kolejność w tablicy = kolejność zaliczania (dron musi lecieć po kolei).
+
+Przykład:
+    gates: [
+      { x:   0, y: 2, z:  -10, yaw: 0 },              // start, prosto
+      { x:   8, y: 3, z:  -22, yaw: Math.PI / 6 },    // skręt 30° w prawo
+      { x:  -6, y: 4, z:  -35, yaw: -Math.PI / 4 },   // skręt 45° w lewo
+      { x:  15, y: 5, z:  -48, yaw: Math.PI / 3 },    // ostry skręt 60°
+    ]
+
+Rada: pierwsza bramka często bywa tuż przed spawnem (z ≈ -10 do -20),
+żeby dron od razu wiedział, gdzie lecieć.
+
+
+------------------------------------------------------------------------
+6. BOXY  (boxes)
+------------------------------------------------------------------------
+
+Pola:
+    x      — pozycja X środka
+    z      — pozycja Z środka
+    w      — szerokość (oś X, domyślnie 4)
+    h      — wysokość (oś Y, domyślnie 3) — box stoi na ziemi (y = h/2)
+    d      — głębokość (oś Z, domyślnie 4)
+    color  — kolor HEX (domyślnie 0xff4444 = czerwony)
+
+Kolory przydatne do oznaczania trudności:
+    0xff4444  — czerwony   (uwaga!)
+    0xffcc00  — żółty
+    0xcc44ff  — fioletowy
+    0x44ffff  — cyjan
+    0xff8800  — pomarańczowy
+    0x00ccff  — niebieski
+    0xff00ff  — magenta
+    0x00ff88  — zielony
+
+Przykład:
+    boxes: [
+      { x:   0, z: -18, w: 3, h: 2, d: 3, color: 0xff4444 },
+      { x: -12, z:   8, w: 5, h: 1, d: 5, color: 0xffcc00 },
+      { x:  18, z:  -5, w: 3, h: 3, d: 3, color: 0xcc44ff },
+    ]
+
+Box zawsze stoi na ziemi. Nie da się go unieść w powietrze
+(chyba że zmodyfikujesz kod w main.js — pole "y" nie istnieje).
+
+
+------------------------------------------------------------------------
+7. GÓRKI  (hills)
+------------------------------------------------------------------------
+
+Pola:
+    x            — pozycja X środka
+    z            — pozycja Z środka
+    y            — ignorowane (górka zawsze na ziemi)
+    radius       — promień podstawy (domyślnie 30)
+    heightScale  — mnożnik wysokości (domyślnie 0.5)
+                   ↳ rzeczywista wysokość = radius * heightScale
+
+Górka to półkula. Kolizja = AABB (prostokątny bounding box),
+więc dron nie wleci w górkę, ale może "zahaczyć" o jej narożniki.
+
+Przykład:
+    hills: [
+      { x: -70, z:  -80, radius: 30, heightScale: 0.5 },  // wysokość 15 m
+      { x:  90, z: -100, radius: 35, heightScale: 0.6 },  // wysokość 21 m
+    ]
+
+
+------------------------------------------------------------------------
+8. WODA  (water)
+------------------------------------------------------------------------
+
+Pole opcjonalne — jeden zbiornik na planszę (albo null/brak).
+
+Pola:
+    x  — pozycja X środka
+    z  — pozycja Z środka
+    w  — szerokość (oś X, domyślnie 100)
+    d  — głębokość (oś Z, domyślnie 100)
+
+Woda jest PŁASKA (y = 0.15 m nad ziemią) i nie ma kolizji — to tylko
+efekt wizualny. Można nad nią latać.
+
+Przykład:
+    water: { x: 80, z: 70, w: 140, d: 100 },
+
+Aby usunąć wodę: usuń linię "water" albo ustaw:
+    water: null,
+
+
+------------------------------------------------------------------------
+9. PRZYKŁAD — DODANIE PROSTEJ PRZESZKODY
+------------------------------------------------------------------------
+
+Chcesz dodać duże drzewo 5 m w prawo i 40 m do przodu od startu?
+
+Krok 1. Otwórz worlds/expert_race.js.
+Krok 2. Znajdź sekcję "trees: [".
+Krok 3. Dodaj nową linię PRZED zamykającym "],":
+
+    trees: [
+      { x:  15, z:  -5, scale: 1.2 },
+      // ... istniejące drzewa ...
+      { x:   5, z: -40, scale: 1.5 },   // ← NOWE
+    ],
+
+Krok 4. Zapisz plik.
+Krok 5. Odśwież przeglądarkę (Ctrl+Shift+R).
+Krok 6. Wybierz RACE — drzewo jest.
+
+
+------------------------------------------------------------------------
+10. PRZYKŁAD — CAŁKIEM NOWY TOR
+------------------------------------------------------------------------
+
+Krok 1. Skopiuj worlds/beginner.js → worlds/mojtor.js.
+Krok 2. Zmień w nim:
+        id:   'mojtor',
+        name: 'MÓJ TOR — własny',
+Krok 3. Edytuj sekcje trees/gates/boxes/hills/spawn/water.
+Krok 4. Otwórz worlds/index.js i dodaj:
+
+    import mojtor from './mojtor.js';
+
+    export const WORLDS = {
+      beginner,
+      intermediate,
+      expert,
+      expert_race,
+      mojtor,          // ← NOWE
+    };
+
+Krok 5. W index.html, w sekcji "world-grid", dodaj kartę:
+
+    <div class="world-card" data-world="mojtor">
+      <h3>🎨 MÓJ TOR</h3>
+      <p>Własny tor testowy.</p>
+    </div>
+
+Krok 6. W i18n/pl.json i i18n/en.json (opcjonalnie) dodaj tłumaczenia
+        dla kluczy world.mojtor_title / world.mojtor_desc — jeśli
+        używasz data-i18n zamiast statycznego tekstu.
+
+Krok 7. Zapisz, odśwież, wybierz "MÓJ TOR".
+
+
+------------------------------------------------------------------------
+11. CZĘSTE BŁĘDY
+------------------------------------------------------------------------
+
+❌ Zapomniałeś przecinka między elementami tablicy.
+   Poprawnie:
+       trees: [
+         { x: 1, z: 2, scale: 1.0 },   ← przecinek!
+         { x: 3, z: 4, scale: 1.2 },   ← bez przecinka (ostatni)
+       ],
+
+❌ Używasz tablicy [x, z, scale] zamiast obiektu {x, z, scale}.
+   Generator tego NIE przyjmie (rzuci błąd "brak pola x").
+
+❌ Yaw w stopniach zamiast radianów.
+   45     ← ŹLE (potraktuje jako 45 radianów ≈ 2578°)
+   Math.PI / 4   ← DOBRZE
+
+❌ Odwołujesz się do zmiennej, której nie ma:
+   { x: START_X, z: -20 }   ← błąd jeśli START_X nie zdefiniowane
+
+❌ Dodałeś tor do worlds/index.js, ale nie do index.html —
+   nie zobaczysz go w menu.
+
+❌ Zła nazwa pliku w imporcie:
+   import mojtor from './MojTor.js'   ← wielkość liter ma znaczenie
+   Plik to worlds/mojtor.js (małe litery).
+
+
+------------------------------------------------------------------------
+12. TUNING — GDZIE CO ZMIENIAĆ
+------------------------------------------------------------------------
+
+Chcesz szybszy dron?     → physics.thrustFactor: ↑
+Chcesz wolniejszy?        → physics.maxSpeed: ↓
+Chcesz mniejszą grawitację? → physics.gravity: -7.5 (mniej ujemne)
+Chcesz więcej poślizgu?   → physics.drag: 0.998 (bliżej 1.0)
+
+Kamera startowa:          → camera.angle
+Kąty do klawisza K:       → camera.angles: [0, 20, 35, 50]
+
+Więcej o fizyce: patrz komentarze w worlds/_schema.js.
+
+
+------------------------------------------------------------------------
+13. SZYBKA ŚCIĄGA — POLA
+------------------------------------------------------------------------
+
+    DRZEWO:   { x, z, scale? }
+    BRAMKA:   { x, y, z, yaw? }
+    BOX:      { x, z, w?, h?, d?, color? }
+    GÓRKA:    { x, z, radius?, heightScale? }
+    WODA:     { x, z, w?, d? }        (jeden na planszę)
+    SPAWN:    { x, y, z }
+    KAMERA:   { angle, angles: [...] }
+
+Wszystkie wartości w metrach. Yaw w radianach.
+
+
+------------------------------------------------------------------------
+14. POMOC
+------------------------------------------------------------------------
+
+Problem? Otwórz konsolę (F12) i sprawdź czerwone błędy — generator
+podaje DOKŁADNĄ ścieżkę problemu, np.:
+    [gate] brak pola "x"
+    [tree] brak pola "z"
+    [makeWorld:mojtor] brak pola "name"
+
+Repozytorium: https://github.com/panpepson/betafpv-web-sim
+
+Miłego budowania torów! 🚁
+========================================================================

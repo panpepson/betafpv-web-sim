@@ -3,207 +3,7 @@ import { t } from './i18n/index.js';
 import { CollisionSystem } from './modules/collisions.js';
 import { GateTracker }    from './modules/gates.js';
 import { MotorAudio }     from './modules/audio.js';
-
-// ================================================================
-// KONFIGURACJA PLANSZ
-// ================================================================
-const WORLDS = {
-  beginner: {
-    name: 'ŁATWA — cinewhoop (nauka)',
-    physicsMode: 'arcade',
-    cameraAngle: 0,
-    skyTop: 0x4a90e2,
-    skyBottom: 0xc9e4ff,
-    fogNear: 100,
-    fogFar: 700,
-    gravity: -7.5,
-    thrustFactor: 14,
-    pitchRollGain: 0.55,
-    yawRate: 1.8,
-    visualTilt: 0.20,
-    drag: 0.993,
-    maxSpeed: 14,
-    maxAltitude: 120,
-    throttleHover: 0.5,
-    droneStart: { x: 0, y: 8, z: 0 },
-    trees: [
-      [15,-10,1.2],[-20,20,1.0],[30,30,1.5],[-10,-30,1.1],
-      [40,-40,1.3],[-40,40,0.9],[5,50,1.2]
-    ],
-    gates: [
-      [0, 3, -15, 0],
-      [20, 4, -35, Math.PI/4]
-    ],
-    boxes: [
-      [0, -25, 6, 1.5, 6, 0xff4444],
-      [-15, 0, 8, 1, 8, 0xffcc00]
-    ],
-    hills: [
-      [-60, 0, -80, 30, 0.5]
-    ],
-    water: { x: 80, z: 60, w: 120, d: 90 }
-  },
-
-  intermediate: {
-    name: 'ŚREDNIA — dron filmowy',
-    physicsMode: 'arcade',
-    cameraAngle: 0,
-    skyTop: 0x3a7ac2,
-    skyBottom: 0xa8d0e8,
-    fogNear: 80,
-    fogFar: 500,
-    gravity: -9.0,
-    thrustFactor: 22,
-    pitchRollGain: 1.10,
-    yawRate: 2.8,
-    visualTilt: 0.35,
-    drag: 0.988,
-    maxSpeed: 25,
-    maxAltitude: 180,
-    throttleHover: 0.5,
-    droneStart: { x: 0, y: 6, z: 20 },
-    trees: [
-      [10,-10,1.3],[-15,15,1.1],[25,25,1.6],[-8,-25,1.2],
-      [35,-35,1.4],[-35,35,1.0],[5,45,1.3],[-45,-15,1.4],
-      [50,10,1.1],[-60,25,1.2],[20,-55,1.3],[-25,-60,1.1],
-      [55,-25,1.5],[-10,60,1.2],[70,40,1.3]
-    ],
-    gates: [
-      [0, 4, -20, 0],
-      [25, 5, -45, Math.PI/3],
-      [-30, 6, -60, -Math.PI/4],
-      [50, 7, -75, Math.PI/6],
-      [-15, 8, -100, -Math.PI/3],
-      [35, 5, -120, 0]
-    ],
-    boxes: [
-      [0, -30, 5, 2, 5, 0xff4444],
-      [-20, 5, 7, 1.2, 7, 0xffcc00],
-      [30, -10, 4, 3, 4, 0xcc44ff],
-      [-35, -20, 9, 0.6, 9, 0x44ffff],
-      [55, -25, 6, 2.5, 6, 0xff8800]
-    ],
-    hills: [
-      [-70, 0, -90, 35, 0.5],
-      [90, 0, -110, 30, 0.6]
-    ],
-    water: { x: 80, z: 70, w: 140, d: 100 }
-  },
-
-  expert: {
-    name: 'EKSPERT — wyścigowy FPV (realistyczna fizyka)',
-    physicsMode: 'realistic',
-    cameraAngle: 20,
-    skyTop: 0x2a5a92,
-    skyBottom: 0x7a9ab8,
-    fogNear: 50,
-    fogFar: 400,
-    gravity: -9.81,
-    hoverThrottle: 0.5,
-    thrustFactor: 45,
-    pitchRollRate: 2.8,
-    yawRate: 3.0,
-    angularInertia: 0.94,
-    angularDamping: 8.0,
-    airDrag: 0.10,
-    airDragQuadratic: 0.010,
-    maxTiltAngle: Math.PI / 3,
-    maxSpeed: 50,
-    maxAltitude: 300,
-    droneStart: { x: 0, y: 4, z: 30 },
-    trees: [
-      [8,-8,1.4],[-12,12,1.2],[22,22,1.7],[-6,-22,1.3],
-      [30,-30,1.5],[-30,30,1.1],[4,40,1.4],[-40,-12,1.5],
-      [45,8,1.2],[-55,22,1.3],[18,-50,1.4],[-22,-55,1.2],
-      [50,-22,1.6],[-8,55,1.3],[65,35,1.4],[12,70,1.5],
-      [-70,45,1.1],[75,-45,1.3],[-45,-70,1.4],[85,15,1.2]
-    ],
-    gates: [
-      [0, 3, -15, 0],
-      [20, 4, -35, Math.PI/4],
-      [-25, 5, -50, -Math.PI/3],
-      [40, 6, -65, Math.PI/6],
-      [-10, 7, -90, -Math.PI/4],
-      [30, 4, -110, 0],
-      [-40, 5, -130, Math.PI/3],
-      [50, 3, -150, -Math.PI/6],
-      [-20, 4, -170, 0],
-      [15, 5, -190, Math.PI/4]
-    ],
-    boxes: [
-      [0, -25, 4, 2, 4, 0xff4444],
-      [-15, 5, 6, 1, 6, 0xffcc00],
-      [25, -8, 3, 3, 3, 0xcc44ff],
-      [-25, -18, 8, 0.5, 8, 0x44ffff],
-      [45, -22, 5, 2.5, 5, 0xff8800],
-      [-50, 15, 4, 4, 4, 0x00ccff],
-      [60, 5, 3, 5, 3, 0xff00ff],
-      [-35, -40, 7, 1, 7, 0x00ff88]
-    ],
-    hills: [
-      [-80, 0, -100, 40, 0.5],
-      [100, 0, -120, 35, 0.6],
-      [-50, 0, -200, 45, 0.7]
-    ],
-    water: { x: 90, z: 80, w: 180, d: 130 }
-  },
-
-  expert_race: {
-    name: 'RACE — wyścigowy (45° kamera, zero inercji)',
-    physicsMode: 'realistic',
-    cameraAngle: 45,
-    cameraAngles: [20, 35, 45],
-    skyTop: 0x1a2a52,
-    skyBottom: 0x6a8aa8,
-    fogNear: 40,
-    fogFar: 350,
-    gravity: -9.81,
-    hoverThrottle: 0.5,
-    thrustFactor: 50,
-    pitchRollRate: 5.0,
-    yawRate: 5.0,
-    angularInertia: 1.0,
-    angularDamping: 20.0,
-    airDrag: 0.08,
-    airDragQuadratic: 0.008,
-    maxTiltAngle: Math.PI / 3,
-    maxSpeed: 60,
-    maxAltitude: 300,
-    droneStart: { x: 0, y: 3, z: 20 },
-    trees: [
-      [15, -5, 1.2], [-18, 10, 1.3], [25, 20, 1.4], [-10, -20, 1.1],
-      [35, -30, 1.3], [-30, 25, 1.2], [8, 35, 1.3], [-40, -10, 1.4],
-      [45, 5, 1.2], [-50, 20, 1.3], [20, -45, 1.3], [-25, -50, 1.2]
-    ],
-    gates: [
-      [0, 2, -10, 0],
-      [8, 3, -22, Math.PI / 6],
-      [-6, 4, -35, -Math.PI / 4],
-      [15, 5, -48, Math.PI / 3],
-      [-12, 3, -62, -Math.PI / 6],
-      [20, 6, -75, Math.PI / 4],
-      [-8, 4, -90, 0],
-      [25, 3, -105, -Math.PI / 3],
-      [-15, 5, -120, Math.PI / 6],
-      [18, 4, -135, 0],
-      [-10, 3, -150, Math.PI / 4],
-      [5, 2, -165, 0]
-    ],
-    boxes: [
-      [0, -18, 3, 2, 3, 0xff4444],
-      [-12, 8, 5, 1, 5, 0xffcc00],
-      [18, -5, 3, 3, 3, 0xcc44ff],
-      [-20, -15, 6, 0.5, 6, 0x44ffff],
-      [30, -20, 4, 2, 4, 0xff8800],
-      [-35, 12, 3, 4, 3, 0x00ccff]
-    ],
-    hills: [
-      [-70, 0, -80, 30, 0.5],
-      [90, 0, -100, 30, 0.5]
-    ],
-    water: { x: 70, z: 50, w: 100, d: 80 }
-  }
-};
+import { WORLDS }         from './worlds/index.js';
 
 let simState = null;
 
@@ -248,7 +48,7 @@ class BgMusic {
       this.el.id = 'bgMusic';
       this.el.loop = true;
       this.el.preload = 'auto';
-      this.el.muted = true;      // ← CICHY START (autoplay muted = dozwolone)
+      this.el.muted = true;
       const src1 = document.createElement('source');
       src1.src = 'audio/bg-music.ogg';
       src1.type = 'audio/ogg';
@@ -260,13 +60,9 @@ class BgMusic {
       document.body.appendChild(this.el);
     }
 
-    // Wymuś muted, żeby autoplay był dozwolony (niezależnie od tego, co jest w HTML)
     this.el.muted = true;
     this.el.volume = 0.25;
 
-    // ─── Natychmiastowa próba startu (muted) ───
-    // Po F5 to zadziała, bo muted autoplay jest dozwolony.
-    // Gdy user kliknie cokolwiek → unmute() zdejmie muted.
     this.el.play().catch((e) => {
       console.warn('[music] autoplay muted deferred:', e.message);
     });
@@ -285,14 +81,9 @@ class BgMusic {
     try { this.el.pause(); } catch (_) {}
   }
 
-  /**
-   * Zdejmuje muted z elementu audio — muzyka już leci cicho, teraz robi się słyszalna.
-   * Wywołaj przy pierwszej interakcji użytkownika.
-   */
   unmute() {
     if (!this.el) return;
     this.el.muted = false;
-    // Dokończ jeśli z jakiegoś powodu nie gra (np. user zamknął kartę i wrócił)
     if (this.el.paused) this.play();
   }
 
@@ -313,8 +104,8 @@ const bgMusic = new BgMusic();
 // ================================================================
 const audioState = {
   masterMute: false,
-  engineMuted: false,   // preferencja użytkownika (N)
-  musicMuted: false     // preferencja użytkownika (B)
+  engineMuted: false,
+  musicMuted: false
 };
 
 function applyAudioState() {
@@ -322,8 +113,6 @@ function applyAudioState() {
   const musicOff  = audioState.masterMute || audioState.musicMuted;
 
   motorAudio.setMuted(engineOff);
-
-  // Muzyka: sterujemy przez userPaused (nie przez muted, bo muted jest zarezerwowany dla autoplay)
   bgMusic.setUserMuted(musicOff);
 
   updateAudioHud();
@@ -345,35 +134,91 @@ function updateAudioHud() {
   if (mbtn) mbtn.textContent = audioState.musicMuted ? '🔕' : '🎵';
 }
 
-// Wczytaj preferencje z localStorage
 (function loadAudioPrefs() {
   const em = localStorage.getItem('betafpv_engine_mute');
   const mm = localStorage.getItem('betafpv_music_mute');
   if (em === 'true') audioState.engineMuted = true;
   if (mm === 'true') audioState.musicMuted = true;
-  // Uwaga: applyAudioState woła bgMusic.setUserMuted — a to pauzuje muzykę
-  // jeśli user ją wyciszył. To OK — respektujemy preferencję.
   applyAudioState();
 })();
 
-// ─── Odblokowanie audio przy pierwszej interakcji ───
-let __audioInitOnce = false;
+// ================================================================
+// ODBLOKOWANIE AUDIO — wersja odporna na autoplay policy
+// ================================================================
+// Strategia:
+//   1) Słuchamy TYLKO gestów uznawanych przez Chrome (pointerdown, click, keydown, touchstart).
+//   2) NIE używamy `{ once: true }` dopóki AudioContext nie będzie "running".
+//   3) Po sukcesie zdejmujemy listenery ręcznie.
+//   4) Również próbujemy wznowić ctx gdy user wróci do karty (visibilitychange).
+
+let __audioReady = false;
+
 async function ensureAudioInit() {
-  if (__audioInitOnce) return;
-  __audioInitOnce = true;
-  try { await motorAudio.init(); } catch (e) { console.warn('[audio] init failed', e); }
+  if (__audioReady) return;
 
-  // Zdejmij muted z muzyki (cichy start → słyszalny)
+  // 1. Inicjalizacja / wznowienie Web Audio (silnik)
+  try {
+    await motorAudio.init();
+  } catch (e) {
+    console.warn('[audio] init failed', e);
+  }
+
+  // 2. Wymuś resume — jeśli init() nie zdążył (bo np. był już ready)
+  if (motorAudio.ctx && motorAudio.ctx.state === 'suspended') {
+    try {
+      await motorAudio.ctx.resume();
+      console.log('[audio] ctx.resume() →', motorAudio.ctx.state);
+    } catch (e) {
+      console.warn('[audio] ctx.resume() failed:', e.message);
+    }
+  }
+
+  // 3. Muzyka: zdejmij muted + play (już po geście — powinno działać)
   bgMusic.unmute();
+  await bgMusic.play();
 
+  // 4. Zastosuj preferencje mute
   applyAudioState();
+
+  // 5. Sukces dopiero gdy AudioContext faktycznie "running"
+  const ctxState = motorAudio.ctx ? motorAudio.ctx.state : 'none';
+  if (ctxState === 'running' || ctxState === 'none') {
+    __audioReady = true;
+    removeAudioUnlockListeners();
+    console.log('✅ [audio] Odblokowane — AudioContext:', ctxState);
+  } else {
+    console.warn('⏳ [audio] AudioContext wciąż:', ctxState);
+  }
 }
-// Wiele typów interakcji — pewność że złapiemy pierwszą
-document.addEventListener('pointerdown', ensureAudioInit, { once: true });
-document.addEventListener('keydown',     ensureAudioInit, { once: true });
-document.addEventListener('touchstart',  ensureAudioInit, { once: true });
-document.addEventListener('mousemove',   ensureAudioInit, { once: true });
-document.addEventListener('scroll',      ensureAudioInit, { once: true });
+
+function onAudioUnlockGesture(ev) {
+  // Ignoruj zdarzenia z klawiszy modyfikujących (same w sobie nie są gestem)
+  if (ev.type === 'keydown' && ['Shift', 'Control', 'Alt', 'Meta'].includes(ev.key)) return;
+  ensureAudioInit();
+}
+
+function attachAudioUnlockListeners() {
+  document.addEventListener('pointerdown', onAudioUnlockGesture, true);
+  document.addEventListener('click',       onAudioUnlockGesture, true);
+  document.addEventListener('keydown',     onAudioUnlockGesture, true);
+  document.addEventListener('touchstart',  onAudioUnlockGesture, true);
+}
+
+function removeAudioUnlockListeners() {
+  document.removeEventListener('pointerdown', onAudioUnlockGesture, true);
+  document.removeEventListener('click',       onAudioUnlockGesture, true);
+  document.removeEventListener('keydown',     onAudioUnlockGesture, true);
+  document.removeEventListener('touchstart',  onAudioUnlockGesture, true);
+}
+
+attachAudioUnlockListeners();
+
+// Gdy user wraca do karty — jeśli ctx wisi, spróbuj wznowić (jeśli już mamy ready)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && motorAudio.ctx && motorAudio.ctx.state === 'suspended') {
+    motorAudio.ctx.resume().catch(() => {});
+  }
+});
 
 // ================================================================
 // PRZYCISKI AUDIO (MUTE / MUSIC)
@@ -406,7 +251,10 @@ document.addEventListener('scroll',      ensureAudioInit, { once: true });
 // ================================================================
 window.startSimulator = function(worldKey) {
   const cfg = WORLDS[worldKey] || WORLDS.beginner;
-  console.log('🚁 Start symulatora —', cfg.name, '| fizyka:', cfg.physicsMode, '| kamera:', cfg.cameraAngle + '°');
+  console.log('🚁 Start symulatora —', cfg.name, '| fizyka:', cfg.physics.mode, '| kamera:', cfg.camera.angle + '°');
+
+  // Audio: upewnij się że silnik ma wznowiony kontekst (na wypadek gdyby user wystartował bez gestu)
+  ensureAudioInit();
 
   if (simState) {
     window.stopSimulator();
@@ -419,7 +267,7 @@ window.startSimulator = function(worldKey) {
   cameraSmooth.initialized = false;
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(cfg.skyBottom, cfg.fogNear, cfg.fogFar);
+  scene.fog = new THREE.Fog(cfg.sky.bottom, cfg.fog.near, cfg.fog.far);
 
   const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 2000);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -464,8 +312,8 @@ window.startSimulator = function(worldKey) {
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     uniforms: {
-      top:    { value: new THREE.Color(cfg.skyTop) },
-      bottom: { value: new THREE.Color(cfg.skyBottom) }
+      top:    { value: new THREE.Color(cfg.sky.top) },
+      bottom: { value: new THREE.Color(cfg.sky.bottom) }
     },
     vertexShader: `varying vec3 vPos; void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying vec3 vPos;
@@ -494,20 +342,20 @@ window.startSimulator = function(worldKey) {
 
   // ─── Górki ───
   cfg.hills.forEach(h => {
-    const hillGeo = new THREE.SphereGeometry(h[3], 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    const hillGeo = new THREE.SphereGeometry(h.radius, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
     const hill = new THREE.Mesh(hillGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
-    hill.position.set(h[0], h[1], h[2]);
-    hill.scale.set(1, h[4], 1);
+    hill.position.set(h.x, h.y, h.z);
+    hill.scale.set(1, h.heightScale, 1);
     hill.castShadow = true;
     hill.receiveShadow = true;
     scene.add(hill);
     track(hill);
 
-    const hillRadius = h[3];
-    const hillHeight = h[3] * h[4];
+    const hillRadius = h.radius;
+    const hillHeight = h.radius * h.heightScale;
     collisions.addBox(
-      new THREE.Vector3(h[0] - hillRadius, h[1], h[2] - hillRadius),
-      new THREE.Vector3(h[0] + hillRadius, h[1] + hillHeight, h[2] + hillRadius),
+      new THREE.Vector3(h.x - hillRadius, h.y, h.z - hillRadius),
+      new THREE.Vector3(h.x + hillRadius, h.y + hillHeight, h.z + hillRadius),
       { kind: 'hill' }
     );
   });
@@ -559,7 +407,7 @@ window.startSimulator = function(worldKey) {
 
     return group;
   }
-  cfg.trees.forEach(t => scene.add(makeTree(t[0], t[1], t[2])));
+  cfg.trees.forEach(t => scene.add(makeTree(t.x, t.z, t.scale)));
 
   // ─── Przeszkody ───
   function makeBox(x, z, w, h, d, color) {
@@ -578,7 +426,7 @@ window.startSimulator = function(worldKey) {
       { kind: 'box', color }
     );
   }
-  cfg.boxes.forEach(b => makeBox(b[0], b[1], b[2], b[3], b[4], b[5]));
+  cfg.boxes.forEach(b => makeBox(b.x, b.z, b.w, b.h, b.d, b.color));
 
   // ─── Bramki ───
   const gateMeshes = [];
@@ -598,7 +446,7 @@ window.startSimulator = function(worldKey) {
     g.userData.isGate = true;
     gateMeshes.push(g);
   }
-  cfg.gates.forEach(g => makeGate(g[0], g[1], g[2], g[3]));
+  cfg.gates.forEach(g => makeGate(g.x, g.y, g.z, g.yaw));
 
   // ─── GateTracker ───
   let gateTracker = new GateTracker(gateMeshes, {
@@ -639,7 +487,7 @@ window.startSimulator = function(worldKey) {
 
   // ─── DRON ───
   const drone = {
-    pos: new THREE.Vector3(cfg.droneStart.x, cfg.droneStart.y, cfg.droneStart.z),
+    pos: new THREE.Vector3(cfg.spawn.x, cfg.spawn.y, cfg.spawn.z),
     vel: new THREE.Vector3(0, 0, 0),
     yaw: 0, pitch: 0, roll: 0,
     targetPitch: 0, targetRoll: 0,
@@ -647,25 +495,25 @@ window.startSimulator = function(worldKey) {
   };
 
   const PHYS = {
-    mode: cfg.physicsMode,
-    gravity: cfg.gravity,
-    thrustFactor: cfg.thrustFactor,
-    pitchRollGain: cfg.pitchRollGain,
-    yawRateArcade: cfg.yawRate,
-    visualTilt: cfg.visualTilt,
-    drag: cfg.drag,
-    throttleHover: cfg.throttleHover,
-    hoverThrottle: cfg.hoverThrottle,
-    pitchRollRate: cfg.pitchRollRate,
-    yawRateReal: cfg.yawRate,
-    angularInertia: cfg.angularInertia,
-    angularDamping: cfg.angularDamping,
-    airDrag: cfg.airDrag,
-    airDragQuadratic: cfg.airDragQuadratic,
-    maxTiltAngle: cfg.maxTiltAngle,
-    maxAltitude: cfg.maxAltitude,
-    maxSpeed: cfg.maxSpeed,
-    groundLevel: 0.5
+    mode: cfg.physics.mode,
+    gravity: cfg.physics.gravity,
+    thrustFactor: cfg.physics.thrustFactor,
+    pitchRollGain: cfg.physics.pitchRollGain,
+    yawRateArcade: cfg.physics.yawRate,
+    visualTilt: cfg.physics.visualTilt,
+    drag: cfg.physics.drag,
+    throttleHover: cfg.physics.throttleHover,
+    hoverThrottle: cfg.physics.hoverThrottle,
+    pitchRollRate: cfg.physics.pitchRollRate,
+    yawRateReal: cfg.physics.yawRate,
+    angularInertia: cfg.physics.angularInertia,
+    angularDamping: cfg.physics.angularDamping,
+    airDrag: cfg.physics.airDrag,
+    airDragQuadratic: cfg.physics.airDragQuadratic,
+    maxTiltAngle: cfg.physics.maxTiltAngle,
+    maxAltitude: cfg.physics.maxAltitude,
+    maxSpeed: cfg.physics.maxSpeed,
+    groundLevel: cfg.physics.groundLevel
   };
 
   let prevTime = performance.now();
@@ -674,10 +522,10 @@ window.startSimulator = function(worldKey) {
   let pausedByDisconnect = false;
   let crosshairVisible = false;
 
-  let cameraAngleDeg = cfg.cameraAngle || 0;
+  let cameraAngleDeg = cfg.camera.angle || 0;
   let cameraAngleRad = cameraAngleDeg * Math.PI / 180;
 
-  const cameraAnglesList = cfg.cameraAngles || [0, 20, 35];
+  const cameraAnglesList = cfg.camera.angles || [0, 20, 35];
   let cameraAngleIndex = cameraAnglesList.indexOf(cameraAngleDeg);
   if (cameraAngleIndex < 0) cameraAngleIndex = 0;
 
