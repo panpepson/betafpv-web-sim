@@ -3,6 +3,12 @@
 // + zmiana koloru po zaliczeniu (czerwony → zielony)
 // + PO UKOŃCZENIU: przelot przez zieloną bramkę resetuje TYLKO ją (wraca na czerwony)
 // + hook na dźwięk sukcesu (realizowany przez MotorAudio w main.js)
+//
+// v2:
+//   - resetDelayMs domyślnie 800 ms (krótszy cooldown po finiszu)
+//   - onGateReset wywoływane z (gate, idx) — potrzebne do startu ghosta
+//   - osobny callback onFreshLapStart — wywoływane gdy gracz zaczyna NOWE okrążenie
+//     (przejście przez bramkę #1 w trybie normalnym LUB „gaszenie" zielonej bramki #1)
 
 import * as THREE from 'three';
 
@@ -104,13 +110,15 @@ export class GateTracker {
     this.onFinish = null;
     /** @type {(gate:Gate, idx:number)=>void} — reset pojedynczej bramki po ukończeniu */
     this.onGateReset = null;
+    /** @type {(gate:Gate, idx:number)=>void} — start nowego okrążenia (bramka #1: normalny przelot LUB „gaszenie") */
+    this.onFreshLapStart = null;
 
     this.startTime = performance.now();
     this.finished = false;
     this.finishTime = null;
 
     // Po ukończeniu: pozwalamy na reset pojedynczych bramek po tym czasie (ms)
-    this.resetDelayMs = opts.resetDelayMs ?? 3000;
+    this.resetDelayMs = opts.resetDelayMs ?? 800;
 
     this._tmpA = new THREE.Vector3();
     this._tmpB = new THREE.Vector3();
@@ -201,6 +209,11 @@ export class GateTracker {
             gate.markPassed(this.passedColor);
             gate.cooldownUntil = now + this.passCooldownMs;
 
+            // NOWE: sygnał startu świeżego okrążenia (przejście przez bramkę #1 z czerwonej)
+            if (idx === 0 && !this.finished) {
+              if (this.onFreshLapStart) this.onFreshLapStart(gate, idx);
+            }
+
             if (this.onGatePassed) this.onGatePassed(gate, idx);
             this._emitProgress();
 
@@ -215,7 +228,14 @@ export class GateTracker {
           }
           // B) Po ukończeniu toru: przelot przez ZIELONĄ bramkę → reset TYLKO JEJ
           else if (canReset) {
+            const wasFirstGate = (idx === 0);
             gate.resetOne();
+
+            // NOWE: „gaszenie" bramki #1 = gracz zaczyna NOWE okrążenie
+            if (wasFirstGate) {
+              if (this.onFreshLapStart) this.onFreshLapStart(gate, idx);
+            }
+
             if (this.onGateReset) this.onGateReset(gate, idx);
             // Nie zmieniamy this.finished — user "gasi" bramki jedna po drugiej
             this._emitProgress();
@@ -240,6 +260,7 @@ export class GateTracker {
     this.onProgress = null;
     this.onFinish = null;
     this.onGateReset = null;
+    this.onFreshLapStart = null;
     this.gates = [];
   }
 }

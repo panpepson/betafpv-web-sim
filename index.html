@@ -46,6 +46,7 @@
   <div><span data-i18n="hud.speed">Speed:</span> <span id="spd">0.0</span> m/s</div>
   <div id="gate-counter">Gates: 0/0</div>
   <div id="gate-timer">00:00.000</div>
+  <div id="ghost-delta" class="hidden">Δ --.---s</div>
   <div id="audio-status">
     <span id="a-engine" title="Engine sound">🔊</span>
     <span id="a-music"  title="Background music">🎵</span>
@@ -161,6 +162,11 @@
           <input type="checkbox" id="collisionsToggle" checked>
           <span data-i18n="options.collisions">💥 Collisions</span>
         </label>
+
+        <label class="option-toggle" id="ghostToggleWrap">
+          <input type="checkbox" id="ghostToggle" checked>
+          <span data-i18n="options.ghost">👻 Ghost replay</span>
+        </label>
       </div>
 
       <div class="world-grid">
@@ -252,6 +258,19 @@
     collisionsToggle.addEventListener('change', () => {
       window.__collisionsEnabled = collisionsToggle.checked;
       localStorage.setItem('betafpv_collisions', collisionsToggle.checked);
+    });
+  }
+
+  // 3b. Checkbox Ghost replay — analogicznie
+  const ghostToggle = document.getElementById('ghostToggle');
+  if (ghostToggle) {
+    const saved = localStorage.getItem('betafpv_ghost_enabled');
+    if (saved !== null) ghostToggle.checked = saved === 'true';
+    window.__ghostEnabled = ghostToggle.checked;
+
+    ghostToggle.addEventListener('change', () => {
+      window.__ghostEnabled = ghostToggle.checked;
+      localStorage.setItem('betafpv_ghost_enabled', ghostToggle.checked);
     });
   }
 

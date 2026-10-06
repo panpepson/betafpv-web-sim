@@ -3,6 +3,7 @@ import { t } from './i18n/index.js';
 import { CollisionSystem } from './modules/collisions.js';
 import { GateTracker }    from './modules/gates.js';
 import { MotorAudio }     from './modules/audio.js';
+import { GhostReplay }    from './modules/ghost.js';
 import { WORLDS }         from './worlds/index.js';
 
 let simState = null;
@@ -36,7 +37,7 @@ const motorAudio = new MotorAudio({
 });
 
 // ================================================================
-// AUDIO — muzyka tła (MP3 / OGG)
+// AUDIO — muzyka tła
 // ================================================================
 class BgMusic {
   constructor() {
@@ -70,16 +71,10 @@ class BgMusic {
 
   async play() {
     if (this.userPaused) return;
-    try {
-      await this.el.play();
-    } catch (e) {
-      console.warn('[music] play deferred:', e.message);
-    }
+    try { await this.el.play(); } catch (e) { console.warn('[music] play deferred:', e.message); }
   }
 
-  pause() {
-    try { this.el.pause(); } catch (_) {}
-  }
+  pause() { try { this.el.pause(); } catch (_) {} }
 
   unmute() {
     if (!this.el) return;
@@ -89,18 +84,15 @@ class BgMusic {
 
   setUserMuted(m) {
     this.userPaused = !!m;
-    if (this.userPaused) {
-      this.pause();
-    } else {
-      this.play();
-    }
+    if (this.userPaused) this.pause();
+    else this.play();
   }
 }
 
 const bgMusic = new BgMusic();
 
 // ================================================================
-// MASTER MUTE — wycisza silnik + muzykę (bramki dalej słychać)
+// MASTER MUTE
 // ================================================================
 const audioState = {
   masterMute: false,
@@ -114,7 +106,6 @@ function applyAudioState() {
 
   motorAudio.setMuted(engineOff);
   bgMusic.setUserMuted(musicOff);
-
   updateAudioHud();
 }
 
@@ -143,27 +134,15 @@ function updateAudioHud() {
 })();
 
 // ================================================================
-// ODBLOKOWANIE AUDIO — wersja odporna na autoplay policy
+// ODBLOKOWANIE AUDIO
 // ================================================================
-// Strategia:
-//   1) Słuchamy TYLKO gestów uznawanych przez Chrome (pointerdown, click, keydown, touchstart).
-//   2) NIE używamy `{ once: true }` dopóki AudioContext nie będzie "running".
-//   3) Po sukcesie zdejmujemy listenery ręcznie.
-//   4) Również próbujemy wznowić ctx gdy user wróci do karty (visibilitychange).
-
 let __audioReady = false;
 
 async function ensureAudioInit() {
   if (__audioReady) return;
 
-  // 1. Inicjalizacja / wznowienie Web Audio (silnik)
-  try {
-    await motorAudio.init();
-  } catch (e) {
-    console.warn('[audio] init failed', e);
-  }
+  try { await motorAudio.init(); } catch (e) { console.warn('[audio] init failed', e); }
 
-  // 2. Wymuś resume — jeśli init() nie zdążył (bo np. był już ready)
   if (motorAudio.ctx && motorAudio.ctx.state === 'suspended') {
     try {
       await motorAudio.ctx.resume();
@@ -173,14 +152,10 @@ async function ensureAudioInit() {
     }
   }
 
-  // 3. Muzyka: zdejmij muted + play (już po geście — powinno działać)
   bgMusic.unmute();
   await bgMusic.play();
-
-  // 4. Zastosuj preferencje mute
   applyAudioState();
 
-  // 5. Sukces dopiero gdy AudioContext faktycznie "running"
   const ctxState = motorAudio.ctx ? motorAudio.ctx.state : 'none';
   if (ctxState === 'running' || ctxState === 'none') {
     __audioReady = true;
@@ -192,7 +167,6 @@ async function ensureAudioInit() {
 }
 
 function onAudioUnlockGesture(ev) {
-  // Ignoruj zdarzenia z klawiszy modyfikujących (same w sobie nie są gestem)
   if (ev.type === 'keydown' && ['Shift', 'Control', 'Alt', 'Meta'].includes(ev.key)) return;
   ensureAudioInit();
 }
@@ -213,7 +187,6 @@ function removeAudioUnlockListeners() {
 
 attachAudioUnlockListeners();
 
-// Gdy user wraca do karty — jeśli ctx wisi, spróbuj wznowić (jeśli już mamy ready)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && motorAudio.ctx && motorAudio.ctx.state === 'suspended') {
     motorAudio.ctx.resume().catch(() => {});
@@ -221,7 +194,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ================================================================
-// PRZYCISKI AUDIO (MUTE / MUSIC)
+// PRZYCISKI AUDIO
 // ================================================================
 (function setupAudioButtons() {
   const btn = document.getElementById('mute-btn');
@@ -253,12 +226,9 @@ window.startSimulator = function(worldKey) {
   const cfg = WORLDS[worldKey] || WORLDS.beginner;
   console.log('🚁 Start symulatora —', cfg.name, '| fizyka:', cfg.physics.mode, '| kamera:', cfg.camera.angle + '°');
 
-  // Audio: upewnij się że silnik ma wznowiony kontekst (na wypadek gdyby user wystartował bez gestu)
   ensureAudioInit();
 
-  if (simState) {
-    window.stopSimulator();
-  }
+  if (simState) window.stopSimulator();
 
   smoothedInput.throttle = 0;
   smoothedInput.yaw = 0;
@@ -455,11 +425,13 @@ window.startSimulator = function(worldKey) {
     ringThickness: 0.3,
     restitution: 0.45,
     passCooldownMs: 600,
-    passedColor: 0x00ff66
+    passedColor: 0x00ff66,
+    resetDelayMs: 800
   });
 
   const gateCounterEl = document.getElementById('gate-counter');
   const gateTimerEl   = document.getElementById('gate-timer');
+  const ghostDeltaEl  = document.getElementById('ghost-delta');
 
   function formatTime(ms) {
     const total = Math.max(0, ms | 0);
@@ -478,10 +450,92 @@ window.startSimulator = function(worldKey) {
     gateTimerEl.classList.toggle('finished', !!finished);
   };
 
-  gateTracker.onGatePassed = () => { motorAudio.success(); };
-  gateTracker.onGateHit    = () => { motorAudio.thud();    };
-  gateTracker.onFinish     = () => { motorAudio.fanfare(); };
-  gateTracker.onGateReset  = () => { motorAudio.beep(330, 0.08, 0.06); };
+  // ─── Ghost Replay ───
+  const ghostSupported = true;
+  const ghostEnabled = ghostSupported && (window.__ghostEnabled !== false);
+
+  const ghostColors = {
+    beginner:     0x99ff99,
+    intermediate: 0xffdd66,
+    expert:       0x66ccff,
+    expert_race:  0xff66cc,
+  };
+
+  const ghostWrap = document.getElementById('ghostToggleWrap');
+  if (ghostWrap) ghostWrap.style.display = ghostSupported ? '' : 'none';
+
+  const ghost = ghostSupported
+    ? new GhostReplay(worldKey, scene, {
+        enabled: ghostEnabled,
+        baseColor: ghostColors[worldKey] ?? 0x66ccff,
+      })
+    : null;
+
+  if (ghost) {
+    ghost.loadSaved();
+
+    ghost.onDeltaUpdate = (delta, isAhead) => {
+      if (!ghostDeltaEl) return;
+      if (delta == null) {
+        ghostDeltaEl.classList.add('hidden');
+        ghostDeltaEl.classList.remove('ahead', 'behind');
+        return;
+      }
+      ghostDeltaEl.classList.remove('hidden');
+      ghostDeltaEl.classList.toggle('ahead',  isAhead);
+      ghostDeltaEl.classList.toggle('behind', !isAhead);
+      const sign = delta >= 0 ? '+' : '';
+      ghostDeltaEl.textContent = `Δ ${sign}${delta.toFixed(3)}s`;
+      ghost.setGhostColor(delta > 0 ? 0x66ff99 : 0xff6666);
+    };
+  }
+
+  let ghostRecordingStarted = false;
+  let hasCompletedFirstLap = false;
+
+  function startGhostForFreshLap() {
+    if (!ghost || !ghostSupported || !ghostEnabled) return;
+    if (!hasCompletedFirstLap) return;
+
+    const ghostNow = performance.now();
+    ghostRecordingStarted = true;
+    ghost.startRecording(ghostNow);
+
+    // ⚠️ Zsynchronizuj timer okrążenia z ghostem
+    gateTracker.startTime = ghostNow;
+
+    if (ghost.hasRecord()) {
+      ghost.restartPlayback(ghostNow);
+    } else {
+      console.log('👻 [ghost] brak rekordu — nagrywam kolejny przejazd');
+    }
+  }
+
+  gateTracker.onGatePassed = (gate, idx) => {
+    motorAudio.success();
+  };
+
+  gateTracker.onGateHit = () => { motorAudio.thud(); };
+
+  gateTracker.onGateReset = (gate, idx) => {
+    motorAudio.beep(330, 0.08, 0.06);
+  };
+
+  gateTracker.onFreshLapStart = (gate, idx) => {
+    if (idx !== 0) return;
+    startGhostForFreshLap();
+  };
+
+  gateTracker.onFinish = () => {
+    motorAudio.fanfare();
+
+    hasCompletedFirstLap = true;
+
+    if (ghost) {
+      const time = performance.now() - gateTracker.startTime;
+      ghost.onLapComplete(time);
+    }
+  };
 
   gateTracker._emitProgress();
 
@@ -592,6 +646,13 @@ window.startSimulator = function(worldKey) {
       if (gateTracker) {
         gateTracker.restart();
         motorAudio.beep(440, 0.15, 0.10);
+
+        if (ghost) {
+          ghostRecordingStarted = false;
+          ghost.stopRecording();
+          ghost.stopPlayback();
+        }
+
         console.log('🔄 Restart okrążenia');
       }
       return;
@@ -715,6 +776,7 @@ window.startSimulator = function(worldKey) {
     const isPaused = pausedByKey || pausedByDisconnect;
     if (isPaused) {
       motorAudio.update(0, false, true);
+      if (ghost) ghost.update(now, null, drone.pos);
       renderer.render(scene, camera);
       return;
     }
@@ -786,6 +848,20 @@ window.startSimulator = function(worldKey) {
       if (drone.vel.y > 0) drone.vel.y = 0;
     }
 
+    // ─── Ghost replay ───
+    if (ghost) {
+      const currentLapTime = gateTracker ? (now - gateTracker.startTime) : 0;
+
+      if (ghostRecordingStarted) {
+        ghost.record(drone.pos, {
+          yaw: drone.yaw, pitch: drone.pitch, roll: drone.roll
+        }, now);
+      }
+
+      // Przekaż pozycję gracza — delta liczona przez porównanie pozycji 3D
+      ghost.update(now, currentLapTime, drone.pos);
+    }
+
     // ─── Kamera ───
     if (!cameraSmooth.initialized) {
       cameraSmooth.pitch = drone.pitch;
@@ -819,7 +895,6 @@ window.startSimulator = function(worldKey) {
     const hudSpd = document.getElementById('spd');
     if (hudSpd) hudSpd.textContent = drone.vel.length().toFixed(1);
 
-    // ─── Dźwięk silnika ───
     const throttle01ForAudio = (inp.throttle + 1) / 2;
     motorAudio.update(throttle01ForAudio, true, false);
 
@@ -842,6 +917,7 @@ window.startSimulator = function(worldKey) {
     onKeyDown,
     collisions,
     gateTracker,
+    ghost,
     getRafId: () => rafId
   };
 
@@ -866,6 +942,11 @@ window.stopSimulator = function() {
   if (ch) ch.classList.add('hidden');
   const pi = document.getElementById('pauseIndicator');
   if (pi) pi.classList.add('hidden');
+
+  if (simState.ghost) {
+    simState.ghost.dispose();
+    simState.ghost = null;
+  }
 
   if (simState.gateTracker) {
     simState.gateTracker.gates.forEach(g => g.resetColor && g.resetColor());

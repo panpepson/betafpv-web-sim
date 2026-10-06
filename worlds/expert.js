@@ -40,6 +40,18 @@ export default makeWorld({
     { x:  65, z:  35, scale: 1.4 }, { x:  12, z:  70, scale: 1.5 },
     { x: -70, z:  45, scale: 1.1 }, { x:  75, z: -45, scale: 1.3 },
     { x: -45, z: -70, scale: 1.4 }, { x:  85, z:  15, scale: 1.2 },
+
+    { x: -23, z: -180, scale: 1.4 }, { x:  85, z:  15, scale: 1.2 },
+
+    { x: 43, z: -180, scale: 4 }, { x:  85, z:  15, scale: 1.2 }, // dwa ostatnie 
+    { x: 73, z: -180, scale: 3 }, { x:  85, z:  15, scale: 1.2 }, // 
+
+
+    { x: 43, z: 100, scale: 3 }, { x:  85, z:  15, scale: 1.2 },  // za plecami 
+    { x: 73, z: 200, scale: 4 }, { x:  85, z:  15, scale: 1.2 },
+
+
+
   ],
 
   gates: [
@@ -69,7 +81,7 @@ export default makeWorld({
   hills: [
     { x: -80, z: -100, radius: 40, heightScale: 0.5 },
     { x: 100, z: -120, radius: 35, heightScale: 0.6 },
-    { x: -50, z: -200, radius: 45, heightScale: 0.7 },
+    { x: -30, z: -230, radius: 45, heightScale: 0.7 },
   ],
 
   water: { x: 90, z: 80, w: 180, d: 130 },

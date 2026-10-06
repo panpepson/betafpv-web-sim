@@ -99,6 +99,7 @@
     "footer": "SA = kąt kamery FPV (0° / 20° / 35°)"
   },
   "options": {
-    "collisions": "💥 Kolizje"
+    "collisions": "💥 Kolizje",
+    "ghost": "👻 Ghost replay"
   }
 }

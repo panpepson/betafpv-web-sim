@@ -354,3 +354,18 @@ body {
   background: rgba(10, 10, 10, 0.82);
   backdrop-filter: blur(4px);
 }
+
+
+/* ─── Ghost Replay ─── */
+#ghost-delta {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  transition: color 0.15s, background 0.15s;
+}
+#ghost-delta.ahead  { color: #66ff99; background: rgba(0, 80, 0, 0.4); }
+#ghost-delta.behind { color: #ff6666; background: rgba(80, 0, 0, 0.4); }
+#ghost-delta.hidden { display: none; }
