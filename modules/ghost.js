@@ -1,27 +1,28 @@
 // modules/ghost.js
 // 👻 Ghost Replay — zapis i odtwarzanie najlepszego przejazdu.
 //
-// Zapisuje co ~33 ms (30 Hz): pozycję (x,y,z), rotację (yaw, pitch, roll).
-// Przechowuje w localStorage jako zwięzły JSON (kilka KB na przejazd).
-// Odtwarza jako półprzezroczysty dron + ślad.
-//
-// v3:
+// v5:
 //   - Delta czasu liczona przez porównanie POZYCJI 3D gracza z klatkami ducha
-//     (a nie przez porównanie timerów — to dawało zawsze 0)
 //   - Sanity check |delta| > 120 → null
+//   - Duch dolatuje PŁYNNIE do ostatniej klatki (nie zatrzymuje się w bramce)
 //   - Auto-ukrycie ducha 1.5 s po zakończeniu playbacku
+//   - TARANOWANIE: gdy gracz jest PRZED duchem (delta > 0) i w niego wleci,
+//     duch znika (z respawnem po 2 s). Wymaga włączonej opcji (patrz main.js).
+//   - onGhostIntro callback — pokazanie intro
 //   - baseColor — kolor ducha per plansza
 
 import * as THREE from 'three';
 
 const STORAGE_PREFIX = 'betafpv_ghost_';
-const SAMPLE_INTERVAL_MS = 33;   // ~30 Hz
+const SAMPLE_INTERVAL_MS = 33;    // ~30 Hz
+const INTRO_DURATION_MS = 6000;   // 6 s
+const TACKLE_RADIUS = 2.0;        // promień do wykrycia taranowania
+const TACKLE_RESPAWN_MS = 2000;   // respawn ducha po zniszczeniu
 
 // ─── Prosty, tani mesh drona-ducha ───
 function makeGhostDrone(baseColor = 0x66ccff) {
   const group = new THREE.Group();
 
-  // Kadłub — mały box
   const bodyGeo = new THREE.BoxGeometry(0.6, 0.15, 0.6);
   const bodyMat = new THREE.MeshBasicMaterial({
     color: baseColor, transparent: true, opacity: 0.55, depthWrite: false
@@ -29,7 +30,6 @@ function makeGhostDrone(baseColor = 0x66ccff) {
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   group.add(body);
 
-  // 4 ramiona (cienkie boxy)
   const armGeo = new THREE.BoxGeometry(1.2, 0.05, 0.08);
   const armMat = bodyMat.clone();
   for (let i = 0; i < 2; i++) {
@@ -38,7 +38,6 @@ function makeGhostDrone(baseColor = 0x66ccff) {
     group.add(arm);
   }
 
-  // 4 śmigła (pierścienie)
   const propGeo = new THREE.RingGeometry(0.22, 0.30, 12);
   const propMat = new THREE.MeshBasicMaterial({
     color: baseColor, transparent: true, opacity: 0.35,
@@ -101,9 +100,7 @@ class Trail {
     this.geometry.setDrawRange(0, 0);
   }
 
-  setColor(hex) {
-    this.material.color.setHex(hex);
-  }
+  setColor(hex) { this.material.color.setHex(hex); }
 
   dispose() {
     this.geometry.dispose();
@@ -119,20 +116,29 @@ export class GhostReplay {
     this.scene = scene;
     this.enabled = opts.enabled !== false;
 
-    // ─── Kolor bazowy ducha (per plansza) ───
     this.baseColor = opts.baseColor ?? 0x66ccff;
 
     // Nagrywanie
     this.recording = false;
-    this.recordedFrames = [];      // [{t, x, y, z, yaw, pitch, roll}, ...]
+    this.recordedFrames = [];
     this.recordStartTime = 0;
     this.lastSampleTime = 0;
 
     // Odtwarzanie
-    this.playback = null;          // {frames, timeMs}
+    this.playback = null;
     this.playing = false;
     this.playbackStart = 0;
     this.playbackIndex = 0;
+    this.finishedPlayback = false;   // gdy playback dobiegł końca
+
+    // Taranowanie
+    this.destroyed = false;          // duch zniszczony przez gracza
+    this.respawnAt = 0;              // kiedy może się odrodzić
+    this.onGhostDestroyed = null;    // (info) => void
+    this.onGhostRespawn = null;      // () => void
+
+    // Intro
+    this.onGhostIntro = null;
 
     // Wizualizacja
     const ghost = makeGhostDrone(this.baseColor);
@@ -146,27 +152,21 @@ export class GhostReplay {
     this.trail.line.visible = false;
     this.trail.setColor(this.baseColor);
 
-    // Delta czasu (HUD callback)
-    this.onDeltaUpdate = null;     // (deltaSeconds|null, isAhead) => void
+    this.onDeltaUpdate = null;
 
     this._tmpVec = new THREE.Vector3();
+    this._currentPos = new THREE.Vector3();
+    this._lastDelta = 0;   // ostatnia policzona delta (dla taranowania)
   }
 
   // ─── localStorage ───
-  _storageKey() {
-    return STORAGE_PREFIX + this.worldId;
-  }
+  _storageKey() { return STORAGE_PREFIX + this.worldId; }
 
-  /** Sprawdza czy istnieje zapisany rekord (bez ładowania). */
   hasRecord() {
-    try {
-      return !!localStorage.getItem(this._storageKey());
-    } catch (_) {
-      return false;
-    }
+    try { return !!localStorage.getItem(this._storageKey()); }
+    catch (_) { return false; }
   }
 
-  /** Zwraca zapisany rekord lub null. */
   loadSaved() {
     try {
       const raw = localStorage.getItem(this._storageKey());
@@ -180,7 +180,6 @@ export class GhostReplay {
     }
   }
 
-  /** Zapisuje rekord do localStorage. */
   saveRecord(frames, timeMs) {
     try {
       const packed = frames.map(f => ([
@@ -189,11 +188,8 @@ export class GhostReplay {
         +f.yaw.toFixed(3), +f.pitch.toFixed(3), +f.roll.toFixed(3)
       ]));
       const payload = {
-        v: 1,
-        worldId: this.worldId,
-        timeMs,
-        savedAt: Date.now(),
-        frames: packed
+        v: 1, worldId: this.worldId, timeMs,
+        savedAt: Date.now(), frames: packed
       };
       localStorage.setItem(this._storageKey(), JSON.stringify(payload));
       console.log(`👻 [ghost] zapisano rekord ${this.worldId}: ${packed.length} klatek, ${(timeMs/1000).toFixed(3)} s`);
@@ -204,7 +200,6 @@ export class GhostReplay {
     }
   }
 
-  /** Usuwa rekord (debug / reset). */
   clearSaved() {
     try { localStorage.removeItem(this._storageKey()); } catch (_) {}
     this.playback = null;
@@ -220,11 +215,8 @@ export class GhostReplay {
     console.log('👻 [ghost] start nagrywania');
   }
 
-  stopRecording() {
-    this.recording = false;
-  }
+  stopRecording() { this.recording = false; }
 
-  /** Wywoływane w pętli z main.js. */
   record(dronePos, rot, now) {
     if (!this.recording) return;
     if (now - this.lastSampleTime < SAMPLE_INTERVAL_MS) return;
@@ -237,16 +229,11 @@ export class GhostReplay {
     this.lastSampleTime = now;
   }
 
-  /**
-   * Wywoływane gdy user ukończy okrążenie.
-   * Zapisuje TYLKO jeśli lepszy czas od poprzedniego rekordu.
-   */
   onLapComplete(timeMs) {
     if (!this.recording) {
       console.log('👻 [ghost] onLapComplete: brak nagrania (recording === false)');
       return false;
     }
-
     if (this.recordedFrames.length === 0) {
       console.log('👻 [ghost] onLapComplete: 0 klatek');
       this.stopRecording();
@@ -290,14 +277,28 @@ export class GhostReplay {
     this.playing = true;
     this.playbackStart = now;
     this.playbackIndex = 0;
+    this.finishedPlayback = false;
+    this.destroyed = false;
+    this.respawnAt = 0;
     this.ghostGroup.visible = true;
     this.trail.line.visible = true;
     this.trail.clear();
+
+    if (this.onGhostIntro) {
+      this.onGhostIntro({
+        timeMs: this.playback.timeMs,
+        durationMs: INTRO_DURATION_MS,
+        baseColor: this.baseColor
+      });
+    }
+
     console.log(`👻 [ghost] odtwarzanie (${(this.playback.timeMs/1000).toFixed(3)} s, ${this.playback.frames.length} klatek)`);
   }
 
   stopPlayback() {
     this.playing = false;
+    this.finishedPlayback = false;
+    this.destroyed = false;
     this.ghostGroup.visible = false;
     this.trail.line.visible = false;
     if (this.onDeltaUpdate) this.onDeltaUpdate(null, false);
@@ -326,37 +327,85 @@ export class GhostReplay {
   }
 
   /**
-   * Wywoływane w głównej pętli — aktualizuje pozycję ducha.
-   * @param {number} now             performance.now()
-   * @param {number} currentTimeMs   aktualny czas przejazdu gracza (od startu okrążenia)
-   * @param {THREE.Vector3} playerPos  aktualna pozycja gracza (do wyliczenia delty 3D)
+   * Zniszczenie ducha przez taranowanie (wołane z main.js).
+   * @param {number} now  performance.now()
    */
+  destroy(now = performance.now()) {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.respawnAt = now + TACKLE_RESPAWN_MS;
+    this.ghostGroup.visible = false;
+    this.trail.line.visible = false;
+    if (this.onGhostDestroyed) this.onGhostDestroyed({ respawnMs: TACKLE_RESPAWN_MS });
+    console.log('💥 [ghost] zniszczony! Respawn za', (TACKLE_RESPAWN_MS / 1000).toFixed(1), 's');
+  }
+
   update(now, currentTimeMs, playerPos) {
+    // ─── Respawn po zniszczeniu ───
+    if (this.destroyed) {
+      if (now >= this.respawnAt && this.enabled) {
+        this.destroyed = false;
+        this.ghostGroup.visible = true;
+        this.trail.line.visible = true;
+        if (this.onGhostRespawn) this.onGhostRespawn();
+        console.log('👻 [ghost] respawn');
+      } else {
+        return;
+      }
+    }
+
     if (!this.playing || !this.playback) return;
 
     const t = now - this.playbackStart;
     const frames = this.playback.frames;
 
-    // Znajdź bieżący indeks klatek (interpolacja liniowa)
     while (this.playbackIndex < frames.length - 1 &&
            frames[this.playbackIndex + 1].t <= t) {
       this.playbackIndex++;
     }
 
     // ─── Koniec playbacku ───
-    if (this.playbackIndex >= frames.length - 1 && t > frames[frames.length - 1].t) {
+    // UWAGA: zamiast zatrzymywać ducha w miejscu, pozwalamy mu kontynuować
+    // po ostatniej klatce (interpolacja liniowa w ostatnim kierunku) przez
+    // krótki czas, potem auto-hide.
+    if (this.playbackIndex >= frames.length - 1) {
       const last = frames[frames.length - 1];
-      this._applyPose(last.x, last.y, last.z, last.yaw, last.pitch, last.roll);
+      const beforeLast = frames[Math.max(0, frames.length - 2)];
 
-      const timeSinceEnd = t - last.t;
-      if (timeSinceEnd > 1500) {
+      // Kierunek ostatniego odcinka (do płynnego „dolotu")
+      const dx = last.x - beforeLast.x;
+      const dy = last.y - beforeLast.y;
+      const dz = last.z - beforeLast.z;
+      const dLen = Math.hypot(dx, dy, dz) || 1;
+      const dirX = dx / dLen, dirY = dy / dLen, dirZ = dz / dLen;
+
+      // „Overshoot" — duch leci jeszcze ~0.4 s po ostatniej klatce w tym samym kierunku
+      const overshootMs = 400;
+      const overshootSec = 0.4;
+      const timeAfterEnd = t - last.t; // ms
+      const overshoot = Math.min(overshootMs / 1000, Math.max(0, timeAfterEnd / 1000));
+
+      const speedEstimate = dLen / Math.max(0.001, (last.t - beforeLast.t) / 1000); // m/s
+      const travelDist = speedEstimate * Math.min(overshootSec, overshoot);
+
+      const x = last.x + dirX * travelDist;
+      const y = last.y + dirY * travelDist;
+      const z = last.z + dirZ * travelDist;
+
+      this._applyPose(x, y, z, last.yaw, last.pitch, last.roll);
+      // nie dodajemy do śladu po końcu (żeby nie wydłużać)
+
+      // Auto-ukrycie dopiero po 1.5 s od końca
+      if (timeAfterEnd > 1500) {
         this.playing = false;
+        this.finishedPlayback = true;
         this.ghostGroup.visible = false;
         this.trail.line.visible = false;
         if (this.onDeltaUpdate) this.onDeltaUpdate(null, false);
         return;
       }
 
+      // Delta w końcówce
       if (this.onDeltaUpdate && currentTimeMs != null && playerPos) {
         const delta = this._computeDelta(playerPos, currentTimeMs);
         if (delta != null) this.onDeltaUpdate(delta, delta > 0);
@@ -364,7 +413,6 @@ export class GhostReplay {
       return;
     }
 
-    // ─── Interpolacja bieżącej klatki ducha ───
     const a = frames[this.playbackIndex];
     const b = frames[Math.min(this.playbackIndex + 1, frames.length - 1)];
     const span = Math.max(1, b.t - a.t);
@@ -379,29 +427,37 @@ export class GhostReplay {
 
     this._applyPose(x, y, z, yaw, pitch, roll);
     this.trail.push(x, y, z);
+    this._currentPos.set(x, y, z);
 
-    // ─── Delta czasu — różnica pozycji 3D ───
+    // ─── Delta ───
+    let delta = 0;
     if (this.onDeltaUpdate && currentTimeMs != null && playerPos) {
-      const delta = this._computeDelta(playerPos, currentTimeMs);
-      if (delta != null) {
-        const isAhead = delta > 0;
-        this.onDeltaUpdate(delta, isAhead);
+      const d = this._computeDelta(playerPos, currentTimeMs);
+      if (d != null) {
+        delta = d;
+        this._lastDelta = d;
+        const isAhead = d > 0;
+        this.onDeltaUpdate(d, isAhead);
+      }
+    }
+
+    // ─── Taranowanie: gdy gracz jest PRZED duchem (delta > 0) i blisko ───
+    // „delta > 0" znaczy: duch jest wcześniej w torze, czyli gracz jest przed nim → zielony.
+    if (playerPos && !this.destroyed && delta > 0) {
+      const dx = playerPos.x - this._currentPos.x;
+      const dy = playerPos.y - this._currentPos.y;
+      const dz = playerPos.z - this._currentPos.z;
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      if (dist < TACKLE_RADIUS) {
+        this.destroy(now);
       }
     }
   }
 
-  /**
-   * Szuka w klatkach ducha moment, w którym był NAJBLIŻEJ aktualnej pozycji gracza.
-   * Zwraca deltę (t_ghost_w_tym_miejscu - T_gracza) w sekundach.
-   *   > 0  →  gracz jest przed duchem (duch doleci tam później)  →  zielony
-   *   < 0  →  gracz jest za duchem  (duch już tam był)           →  czerwony
-   *   null →  nie udało się policzyć / sanity check failed
-   */
   _computeDelta(playerPos, currentTimeMs) {
     if (!this.playback) return null;
     const frames = this.playback.frames;
 
-    // Szukamy tylko w okolicy aktualnego indeksu (perf) — ±60 klatek = ±2 s
     const start = Math.max(0, this.playbackIndex - 60);
     const end = Math.min(frames.length - 1, this.playbackIndex + 60);
 
@@ -414,20 +470,14 @@ export class GhostReplay {
       const dy = f.y - playerPos.y;
       const dz = f.z - playerPos.z;
       const d2 = dx*dx + dy*dy + dz*dz;
-      if (d2 < bestDist) {
-        bestDist = d2;
-        best = f;
-      }
+      if (d2 < bestDist) { bestDist = d2; best = f; }
     }
 
     if (!best) return null;
 
-    // best.t = czas, w którym duch był w tym miejscu (względem startu okrążenia)
-    // currentTimeMs = czas gracza w tym momencie (względem startu okrążenia)
     const deltaMs = best.t - currentTimeMs;
     const deltaSec = deltaMs / 1000;
 
-    // Sanity check — absurdalne wartości pomijamy
     if (Math.abs(deltaSec) > 120) return null;
 
     return deltaSec;
@@ -446,7 +496,6 @@ export class GhostReplay {
     }
   }
 
-  /** Kolor ghosta wg delty (zielony = przed, czerwony = za). */
   setGhostColor(hex) {
     for (const m of this.ghostMaterials) {
       m.color.setHex(hex);

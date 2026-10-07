@@ -488,6 +488,49 @@ window.startSimulator = function(worldKey) {
       ghostDeltaEl.textContent = `Δ ${sign}${delta.toFixed(3)}s`;
       ghost.setGhostColor(delta > 0 ? 0x66ff99 : 0xff6666);
     };
+
+    // Intro 6 s
+    ghost.onGhostIntro = ({ timeMs }) => {
+      const intro = document.getElementById('ghost-intro');
+      if (!intro) return;
+
+      // Tłumaczenia (i18n) — teksty wstawiane dynamicznie z kluczy
+      const titleEl  = intro.querySelector('.ghost-intro-title');
+      const recordEl = intro.querySelector('.ghost-intro-time-label [data-i18n="ghost.intro_record"]');
+      const timeEl   = intro.querySelector('.ghost-intro-time');
+
+      if (titleEl)  titleEl.textContent  = (t && typeof t === 'function' && t('ghost.intro_title'))  || 'Twój poprzedni wynik goni Cię!';
+      if (recordEl) recordEl.textContent = (t && typeof t === 'function' && t('ghost.intro_record')) || 'Rekord:';
+
+      const timeStr = (timeMs / 1000).toFixed(3) + 's';
+      if (timeEl) timeEl.textContent = timeStr;
+
+      intro.classList.remove('hidden');
+      intro.classList.remove('show');
+      void intro.offsetWidth;
+      intro.classList.add('show');
+
+      clearTimeout(ghost._introHideTimer);
+      ghost._introHideTimer = setTimeout(() => {
+        intro.classList.remove('show');
+        setTimeout(() => intro.classList.add('hidden'), 400);
+      }, 6000);
+    };
+
+    // ─── Taranowanie ducha ───
+    ghost.onGhostDestroyed = () => {
+      motorAudio.fanfare();       // dźwięk „sukces"
+      const hud = document.getElementById('hud');
+      if (hud) {
+        hud.classList.add('collision');
+        setTimeout(() => hud.classList.remove('collision'), 300);
+      }
+    };
+
+    ghost.onGhostRespawn = () => {
+      // Delikatny beep przy respawnie
+      motorAudio.beep(880, 0.08, 0.06);
+    };
   }
 
   let ghostRecordingStarted = false;
@@ -501,7 +544,6 @@ window.startSimulator = function(worldKey) {
     ghostRecordingStarted = true;
     ghost.startRecording(ghostNow);
 
-    // ⚠️ Zsynchronizuj timer okrążenia z ghostem
     gateTracker.startTime = ghostNow;
 
     if (ghost.hasRecord()) {
@@ -528,9 +570,7 @@ window.startSimulator = function(worldKey) {
 
   gateTracker.onFinish = () => {
     motorAudio.fanfare();
-
     hasCompletedFirstLap = true;
-
     if (ghost) {
       const time = performance.now() - gateTracker.startTime;
       ghost.onLapComplete(time);
@@ -574,7 +614,10 @@ window.startSimulator = function(worldKey) {
   let rafId = null;
   let pausedByKey = false;
   let pausedByDisconnect = false;
-  let crosshairVisible = false;
+  let crosshairVisible = true;
+
+  const crosshairEl = document.getElementById('crosshair');
+  if (crosshairEl) crosshairEl.classList.remove('hidden');
 
   let cameraAngleDeg = cfg.camera.angle || 0;
   let cameraAngleRad = cameraAngleDeg * Math.PI / 180;
@@ -651,6 +694,12 @@ window.startSimulator = function(worldKey) {
           ghostRecordingStarted = false;
           ghost.stopRecording();
           ghost.stopPlayback();
+        }
+
+        const intro = document.getElementById('ghost-intro');
+        if (intro) {
+          intro.classList.remove('show');
+          intro.classList.add('hidden');
         }
 
         console.log('🔄 Restart okrążenia');
@@ -858,7 +907,6 @@ window.startSimulator = function(worldKey) {
         }, now);
       }
 
-      // Przekaż pozycję gracza — delta liczona przez porównanie pozycji 3D
       ghost.update(now, currentLapTime, drone.pos);
     }
 
@@ -942,6 +990,12 @@ window.stopSimulator = function() {
   if (ch) ch.classList.add('hidden');
   const pi = document.getElementById('pauseIndicator');
   if (pi) pi.classList.add('hidden');
+
+  const intro = document.getElementById('ghost-intro');
+  if (intro) {
+    intro.classList.remove('show');
+    intro.classList.add('hidden');
+  }
 
   if (simState.ghost) {
     simState.ghost.dispose();

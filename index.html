@@ -16,7 +16,7 @@
 <meta property="og:title" content="🚁 BetaFPV Web Sim — FPV Simulator">
 <meta property="og:description" content="Browser-based FPV drone simulator with realistic racer physics.">
 <meta property="og:url" content="https://betafpv.vercel.app/">
-<meta property="og:image" content="https://betafpv.vercel.app/img/preview.png">
+<meta property="og:image" content="https://betafpv.vercel.app/img/preview.jpg">
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="pl_PL">
 
@@ -30,7 +30,7 @@
 <meta name="twitter:creator" content="@devPepson">
 <meta name="twitter:title" content="🚁 BetaFPV Web Sim — FPV Simulator">
 <meta name="twitter:description" content="Browser-based FPV drone simulator with realistic racer physics.">
-<meta name="twitter:image" content="https://betafpv.vercel.app/img/preview.png">
+<meta name="twitter:image" content="https://betafpv.vercel.app/img/preview.jpg">
 
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="stylesheet" href="style.css">
@@ -56,9 +56,9 @@
 </div>
 <button id="menuBtn" class="hidden" data-i18n="menu">⬅ Menu</button>
 
+<!-- ─── Celownik OSD: bez kropki, tylko ramiona ─── -->
 <div id="crosshair" class="hidden">
   <svg width="80" height="80" viewBox="0 0 80 80">
-    <circle cx="40" cy="40" r="2.5" fill="#fff"/>
     <line x1="40" y1="26" x2="40" y2="31" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
     <line x1="40" y1="49" x2="40" y2="54" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
     <line x1="26" y1="40" x2="31" y2="40" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
@@ -66,6 +66,19 @@
   </svg>
 </div>
 
+<!-- ─── Ghost intro: „Twój poprzedni wynik goni Cię!" ─── -->
+<div id="ghost-intro" class="hidden" aria-hidden="true">
+  <div class="ghost-intro-card">
+    <div class="ghost-intro-icon">👻</div>
+    <div class="ghost-intro-text">
+      <div class="ghost-intro-title" data-i18n="ghost.intro_title">Twój poprzedni wynik goni Cię!</div>
+      <div class="ghost-intro-time-label">
+        <span data-i18n="ghost.intro_record">Rekord:</span>
+        <span class="ghost-intro-time">--.---s</span>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="pauseIndicator" class="hidden">
   <div data-i18n="pause.title">⏸️ PAUSED</div>
   <div style="font-size:13px; color:#aaa; margin-top:8px;" data-i18n-html="pause.hint">Press <b>P</b> to resume</div>
@@ -86,17 +99,14 @@
   </video>
   <div id="bgShade"></div>
 
-  <!-- ─── Muzyka tła (MP3) ─── -->
   <audio id="bgMusic" loop preload="auto" aria-hidden="true">
     <source src="audio/bg-music-small.ogg" type="audio/ogg">
   </audio>
 
   <div id="panel">
 
-    <!-- ─── Flaga języka — prawy górny róg panelu ─── -->
     <span id="langToggle" class="lang-toggle" title="Change language / Zmień język">🇵🇱</span>
 
-    <!-- KROK 1: Start -->
     <div class="step active" id="step-start">
       <h1 data-i18n="start.title">🚁 BetaFPV Web Sim 💤</h1>
       <p data-i18n-html="start.welcome">Welcome! ...</p>
@@ -120,7 +130,6 @@
       <button id="btn-start" data-i18n="start.btn_start">Start mapping</button>
     </div>
 
-    <!-- KROK 2: Podłącz pad -->
     <div class="step" id="step-connect">
       <h2 data-i18n="connect.step">Step 1/4 — Connect radio</h2>
       <p data-i18n-html="connect.instruction">...</p>
@@ -128,7 +137,6 @@
       <button id="btn-connect" data-i18n="connect.btn_connect">Connect radio</button>
     </div>
 
-    <!-- KROK 3: Mapowanie -->
     <div class="step" id="step-mapping">
       <h2 data-i18n="mapping.step">Step 2/4 — Axis mapping</h2>
       <p data-i18n-html="mapping.instruction">...</p>
@@ -138,7 +146,6 @@
       <button id="btn-mapping-next" data-i18n="mapping.btn_next">Next → Range calibration</button>
     </div>
 
-    <!-- KROK 4: Kalibracja -->
     <div class="step" id="step-calib">
       <h2 data-i18n="calib.step">Step 3/4 — Range calibration</h2>
       <p data-i18n-html="calib.instruction">...</p>
@@ -152,7 +159,6 @@
       </div>
     </div>
 
-    <!-- KROK 5: Wybór planszy -->
     <div class="step" id="step-done">
       <h2 data-i18n="world.step">Step 4/4 — Choose world</h2>
       <p data-i18n="world.instruction">Calibration complete. Choose difficulty level:</p>
@@ -210,9 +216,7 @@
 <script type="module">
   import { initI18n, toggleLang } from './i18n/index.js';
 
-  // ─── Wideo w tle + muzyka tła ───
   const bgVideo   = document.getElementById('bgVideo');
-  const bgMusicEl = document.getElementById('bgMusic');
   const overlayEl = document.getElementById('overlay');
 
   if (bgVideo && overlayEl) {
@@ -235,10 +239,8 @@
     }
   }
 
-  // 1. Inicjalizacja i18n
   await initI18n();
 
-  // 2. Flaga — zmiana języka
   const langBtn = document.getElementById('langToggle');
   if (langBtn) {
     langBtn.addEventListener('click', () => {
@@ -246,7 +248,6 @@
     });
   }
 
-  // 3. Checkbox kolizji — wczytaj stan z localStorage
   const collisionsToggle = document.getElementById('collisionsToggle');
   if (collisionsToggle) {
     const saved = localStorage.getItem('betafpv_collisions');
@@ -261,7 +262,6 @@
     });
   }
 
-  // 3b. Checkbox Ghost replay — analogicznie
   const ghostToggle = document.getElementById('ghostToggle');
   if (ghostToggle) {
     const saved = localStorage.getItem('betafpv_ghost_enabled');
@@ -274,7 +274,6 @@
     });
   }
 
-  // 4. Dopiero teraz załaduj main.js i calibration.js
   await import('./main.js');
   await import('./calibration.js');
 </script>

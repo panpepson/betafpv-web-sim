@@ -101,5 +101,9 @@
   "options": {
     "collisions": "💥 Kolizje",
     "ghost": "👻 Ghost replay"
+  },
+  "ghost": {
+    "intro_title": "Twój poprzedni wynik goni Cię!",
+    "intro_record": "Rekord:"
   }
 }
