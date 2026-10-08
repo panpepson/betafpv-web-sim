@@ -8,6 +8,9 @@ import { WORLDS }         from './worlds/index.js';
 
 let simState = null;
 
+// ================================================================
+// ANTYSZUM
+// ================================================================
 const INPUT_SMOOTHING  = 0.60;
 const CAMERA_SMOOTHING = 0.75;
 const INPUT_DEADZONE   = 0.02;
@@ -21,6 +24,9 @@ function deadzone(v, threshold = INPUT_DEADZONE) {
   return sign * ((Math.abs(v) - threshold) / (1 - threshold));
 }
 
+// ================================================================
+// AUDIO
+// ================================================================
 const motorAudio = new MotorAudio({
   baseFreq: 60, maxFreq: 280, baseGain: 0.02, maxGain: 0.14,
   baseCutoff: 400, maxCutoff: 2800
@@ -116,7 +122,6 @@ function attachAudioUnlockListeners() {
   document.addEventListener('keydown',     onAudioUnlockGesture, true);
   document.addEventListener('touchstart',  onAudioUnlockGesture, true);
 }
-
 function removeAudioUnlockListeners() {
   document.removeEventListener('pointerdown', onAudioUnlockGesture, true);
   document.removeEventListener('click',       onAudioUnlockGesture, true);
@@ -306,7 +311,7 @@ window.startSimulator = function(worldKey) {
   let gateTracker = new GateTracker(gateMeshes, {
     droneRadius: 0.6, ringRadius: 3.0, ringThickness: 0.3,
     restitution: 0.45, passCooldownMs: 600,
-    passedColor: 0x00ff66, resetDelayMs: 800
+    passedColor: 0x00ff66
   });
 
   const gateCounterEl = document.getElementById('gate-counter');
@@ -330,6 +335,9 @@ window.startSimulator = function(worldKey) {
     gateTimerEl.classList.toggle('finished', !!finished);
   };
 
+  // ════════════════════════════════════════════════════════════════
+  // GHOST REPLAY
+  // ════════════════════════════════════════════════════════════════
   const ghostSupported = true;
   const ghostEnabled = ghostSupported && (window.__ghostEnabled !== false);
 
@@ -351,15 +359,19 @@ window.startSimulator = function(worldKey) {
     : null;
 
   // ─── Stan wyścigu ───
-  let raceGhostTimeMs = null;
-  let ghostRecordingStarted = false;
-  let hasCompletedFirstLap = false;
+  let raceGhostTimeMs = null;      // czas do pobicia (null = brak rekordu)
+  let raceActive = false;          // czy wyścig TRWA
+  let raceFinished = false;        // czy wyścig już rozstrzygnięty
+  let playerWon = false;           // czy wygrał gracz
+  let raceStartTime = 0;           // performance.now() gdy wystartował wyścig (bramka #1)
+
+  // Auto-reset timer (setTimeout ID)
+  let autoResetTimer = null;
 
   if (ghost) {
     ghost.loadSaved();
-    ghost.startRecording(performance.now());
-    ghostRecordingStarted = true;
 
+    // Delta + kolor
     ghost.onDeltaUpdate = (delta, isAhead) => {
       if (!ghostDeltaEl) return;
       if (delta == null) {
@@ -375,6 +387,7 @@ window.startSimulator = function(worldKey) {
       ghost.setGhostColor(delta > 0 ? 0x66ff99 : 0xff6666);
     };
 
+    // Intro 6 s
     ghost.onGhostIntro = ({ timeMs }) => {
       const intro = document.getElementById('ghost-intro');
       if (!intro) return;
@@ -395,12 +408,32 @@ window.startSimulator = function(worldKey) {
       }, 6000);
     };
 
+    // Ghost doleciał do mety — jeśli gracz jeszcze leci → PRZEGRAŁ
+    ghost.onGhostFinished = () => {
+      if (raceFinished) return;   // już rozstrzygnięte (np. gracz wygrał)
+      console.log('🍌 [ghost] ghost doleciał do mety pierwszy!');
+      raceFinished = true;
+      playerWon = false;
+
+      // Pokazujemy 🍌 PRZEGRAŁEŚ, ale nic nie zatrzymujemy.
+      // Auto-reset nastąpi po mecie GRACZA (w onFinish).
+      showResultOverlay({
+        won: false,
+        playerTime: null,  // jeszcze leci
+        ghostTime: raceGhostTimeMs,
+        final: false       // "w trakcie"
+      });
+    };
+
+    // Zniszczenie ghosta = natychmiastowa WYGRANA
     ghost.onGhostDestroyed = () => {
       motorAudio.fanfare();
       const hud = document.getElementById('hud');
       if (hud) { hud.classList.add('collision'); setTimeout(() => hud.classList.remove('collision'), 300); }
       document.body.classList.add('screen-shake');
       setTimeout(() => document.body.classList.remove('screen-shake'), 500);
+
+      // Overlay zniszczenia
       const destroyedEl = document.getElementById('ghost-destroyed');
       if (destroyedEl) {
         const titleEl = destroyedEl.querySelector('.ghost-destroyed-title');
@@ -417,94 +450,236 @@ window.startSimulator = function(worldKey) {
           setTimeout(() => destroyedEl.classList.add('hidden'), 400);
         }, 1500);
       }
+
+      // Natychmiastowe zwycięstwo
+      if (!raceFinished) {
+        console.log('🏆 [ghost] zniszczenie = natychmiastowa WYGRANA');
+        raceFinished = true;
+        playerWon = true;
+        showResultOverlay({
+          won: true,
+          playerTime: null,
+          ghostTime: raceGhostTimeMs,
+          destroyed: true,
+          final: true
+        });
+        scheduleAutoReset();
+      }
     };
 
     ghost.onGhostRespawn = () => motorAudio.beep(880, 0.08, 0.06);
   }
 
-  function startGhostForFreshLap() {
-    if (!ghost || !ghostSupported || !ghostEnabled) return;
-    if (!hasCompletedFirstLap) {
-      console.log('👻 [freshLap] pomijam — pierwsza runda');
-      return;
-    }
-    if (raceGhostTimeMs !== null) {
-      console.log('👻 [freshLap] pomijam — wyścig już trwa');
-      return;
-    }
+  // ════════════════════════════════════════════════════════════════
+  // HELPERY
+  // ════════════════════════════════════════════════════════════════
 
-    // 🔧 RESET: wszystkie bramki na czerwono, finished = false
-    // Dzięki temu gracz zaczyna pełne okrążenie od nowa (wszystkie bramki do zapalenia)
-    for (const g of gateTracker.gates) {
-      g.passed = false;
-      g.prevSide = null;
-      g.prevRadialDist = null;
-      g.cooldownUntil = 0;
-      g.resetColor();
-    }
-    gateTracker.finished = false;
-    gateTracker.finishTime = null;
+  /**
+   * Pokazuje overlay wyniku.
+   * @param {object} opts
+   *   won       {boolean}  czy gracz wygrał
+   *   playerTime {number|null}  czas gracza (null = jeszcze leci / zniszczenie)
+   *   ghostTime  {number|null}  czas ghosta
+   *   destroyed  {boolean}  czy przez zniszczenie
+   *   final      {boolean}  czy ostateczny wynik (true) czy "w trakcie" (false)
+   */
+  function showResultOverlay({ won, playerTime, ghostTime, destroyed = false, final = true }) {
+    const resultEl = document.getElementById('ghost-result');
+    if (!resultEl) return;
 
-    const ghostNow = performance.now();
-    gateTracker.startTime = ghostNow;
+    const iconEl  = document.getElementById('ghost-result-icon');
+    const titleEl = document.getElementById('ghost-result-title');
+    const subEl   = document.getElementById('ghost-result-subtitle');
+    const pTimeEl = resultEl.querySelector('.ghost-result-player-time');
+    const gTimeEl = resultEl.querySelector('.ghost-result-ghost-time');
+    const vsEl    = resultEl.querySelector('.ghost-result-vs');
+    const labelEl = resultEl.querySelector('.ghost-result-time-label');
 
-    if (ghost.hasRecord()) {
-      const record = ghost.loadSaved();
-      raceGhostTimeMs = record ? record.timeMs : null;
-      ghost.restartPlayback(ghostNow);
-      console.log('👻 [freshLap] wyścig startuje — rekord ghosta:', Math.round(raceGhostTimeMs) + 'ms');
+    resultEl.classList.remove('win', 'lose', 'neutral');
+
+    if (won) {
+      if (iconEl)  iconEl.textContent  = destroyed ? '💥' : '🏆';
+      if (titleEl) titleEl.textContent = (t && t('ghost.win_title')) || 'WYGRAŁEŚ!';
+      if (subEl)   subEl.textContent   = destroyed
+        ? ((t && t('ghost.destroyed_title')) || 'ZNISZCZYŁEŚ DUCHA!')
+        : ((t && t('ghost.win_subtitle'))   || 'Pobiłeś rekord ducha');
+      resultEl.classList.add('win');
     } else {
-      raceGhostTimeMs = null;
-      console.log('👻 [freshLap] brak rekordu — nagrywam kolejny przejazd');
+      if (iconEl)  iconEl.textContent  = '🍌';
+      if (titleEl) titleEl.textContent = (t && t('ghost.lose_title')) || 'PRZEGRAŁEŚ';
+      if (subEl)   subEl.textContent   = final
+        ? ((t && t('ghost.lose_subtitle')) || 'Duch był szybszy')
+        : ((t && t('ghost.lose_subtitle')) || 'Duch był szybszy') + ' (w trakcie)';
+      resultEl.classList.add('lose');
+    }
+
+    if (pTimeEl) {
+      pTimeEl.textContent = playerTime != null
+        ? (playerTime / 1000).toFixed(3) + 's'
+        : (final ? '--.---s' : 'w trakcie');
+    }
+    if (gTimeEl) {
+      gTimeEl.textContent = ghostTime != null ? (ghostTime / 1000).toFixed(3) + 's' : '--.---s';
+      gTimeEl.style.display = '';
+    }
+    if (vsEl) vsEl.style.display = '';
+    if (labelEl) labelEl.textContent = (t && t('ghost.your_time')) || 'Twój czas:';
+
+    resultEl.classList.remove('hidden');
+    resultEl.classList.remove('show');
+    void resultEl.offsetWidth;
+    resultEl.classList.add('show');
+  }
+
+  function hideResultOverlay() {
+    const resultEl = document.getElementById('ghost-result');
+    if (!resultEl) return;
+    resultEl.classList.remove('show');
+    setTimeout(() => resultEl.classList.add('hidden'), 400);
+  }
+
+  /** Zaplanuj auto-reset po 3 s. */
+  function scheduleAutoReset() {
+    if (autoResetTimer) clearTimeout(autoResetTimer);
+    autoResetTimer = setTimeout(() => {
+      autoResetTimer = null;
+      performAutoReset();
+    }, 3000);
+  }
+
+  /** Wykonaj auto-reset — przygotuj nową rundę. */
+  function performAutoReset() {
+    console.log('🔄 [auto-reset] nowa runda');
+
+    // Ukryj overlaye
+    hideResultOverlay();
+    const intro = document.getElementById('ghost-intro');
+    if (intro) { intro.classList.remove('show'); intro.classList.add('hidden'); }
+    const destroyedEl = document.getElementById('ghost-destroyed');
+    if (destroyedEl) { destroyedEl.classList.remove('show'); destroyedEl.classList.add('hidden'); }
+
+    // Reset bramek
+    gateTracker.reset();
+
+    // Zatrzymaj ghosta (ukryj go, wyczyść playback)
+    if (ghost) {
+      ghost.stopPlayback();
+      // Przygotuj nagrywanie nowej rundy
+      ghost.startRecording(performance.now());
+    }
+
+    // Reset stanu wyścigu
+    raceActive = false;
+    raceFinished = false;
+    playerWon = false;
+    raceGhostTimeMs = null;
+    raceStartTime = 0;
+
+    // Delta hidden
+    if (ghostDeltaEl) {
+      ghostDeltaEl.classList.add('hidden');
+      ghostDeltaEl.classList.remove('ahead', 'behind');
+    }
+
+    console.log('👻 [auto-reset] gotowe — przeleć przez bramkę #1, żeby wystartować');
+  }
+
+  /** START WYŚCIGU — gracz przeleciał przez bramkę #1. */
+  function startRace(now) {
+    if (raceActive || raceFinished) return;   // już trwa / już rozstrzygnięte
+
+    raceActive = true;
+    raceStartTime = now;
+
+    // Zsynchronizuj timer bramek ze startem wyścigu
+    gateTracker.startTime = now;
+
+    // Nagrywanie od nowa (dla tego przejazdu)
+    if (ghost) {
+      ghost.startRecording(now);
+    }
+
+    // Czy jest rekord do ścigania?
+    const record = ghost ? ghost.loadSaved() : null;
+    raceGhostTimeMs = record ? record.timeMs : null;
+
+    if (ghost && raceGhostTimeMs != null && raceGhostTimeMs > 0) {
+      // Start playbacku ghosta + intro
+      ghost.startPlayback(now);
+      console.log('👻 [race] START — rekord ghosta:', Math.round(raceGhostTimeMs) + 'ms');
+    } else {
+      console.log('👻 [race] START — brak rekordu, lecisz sam');
     }
   }
-  gateTracker.onGatePassed = () => motorAudio.success();
-  gateTracker.onGateHit = () => motorAudio.thud();
-  gateTracker.onGateReset = () => motorAudio.beep(330, 0.08, 0.06);
-  gateTracker.onFreshLapStart = (gate, idx) => { if (idx === 0) startGhostForFreshLap(); };
 
+  // ════════════════════════════════════════════════════════════════
+  // GATE CALLBACKS
+  // ════════════════════════════════════════════════════════════════
+
+  gateTracker.onGatePassed = (gate, idx) => {
+    motorAudio.success();
+
+    // ─── START WYŚCIGU: bramka #1 ───
+    if (idx === 0 && !raceActive && !raceFinished) {
+      startRace(performance.now());
+    }
+  };
+
+  gateTracker.onGateHit = () => motorAudio.thud();
+
+  // ════════════════════════════════════════════════════════════════
+  // META GRACZA — wszystkie bramki zielone
+  // ════════════════════════════════════════════════════════════════
   gateTracker.onFinish = () => {
     motorAudio.fanfare();
-    hasCompletedFirstLap = true;
 
+    if (!raceActive) {
+      // Nie było wyścigu (gracz nie przeleciał przez bramkę #1) — pomijamy
+      return;
+    }
+
+    const playerTime = performance.now() - raceStartTime;
+
+    console.log('🏁 [finish]', {
+      playerTime: Math.round(playerTime) + 'ms',
+      ghostTime: raceGhostTimeMs != null ? Math.round(raceGhostTimeMs) + 'ms' : 'brak',
+      raceFinished,
+      playerWon,
+    });
+
+    // Zapisz rekord (jeśli lepszy)
     if (ghost) {
-      const playerTime = performance.now() - gateTracker.startTime;
-
-      console.log('🏁 [finish]', {
-        playerTime: Math.round(playerTime) + 'ms',
-        raceGhostTime: raceGhostTimeMs != null ? Math.round(raceGhostTimeMs) + 'ms' : 'brak (nie było wyścigu)',
-      });
-
       ghost.onLapComplete(playerTime);
+    }
 
-      const resultEl = document.getElementById('ghost-result');
-      if (resultEl) {
-        const iconEl  = document.getElementById('ghost-result-icon');
-        const titleEl = document.getElementById('ghost-result-title');
-        const subEl   = document.getElementById('ghost-result-subtitle');
-        const pTimeEl = resultEl.querySelector('.ghost-result-player-time');
-        const gTimeEl = resultEl.querySelector('.ghost-result-ghost-time');
-        const vsEl    = resultEl.querySelector('.ghost-result-vs');
-        const labelEl = resultEl.querySelector('.ghost-result-time-label');
+    if (!raceFinished) {
+      // Gracz doleciał PIERWSZY
+      raceFinished = true;
+      playerWon = true;
 
-        resultEl.classList.remove('win', 'lose', 'neutral');
+      if (raceGhostTimeMs != null && raceGhostTimeMs > 0) {
+        // Był wyścig
+        showResultOverlay({
+          won: true,
+          playerTime,
+          ghostTime: raceGhostTimeMs,
+          final: true
+        });
+        console.log('🏆 [result] WYGRAŁEŚ!');
+      } else {
+        // Pierwszy przejazd bez rekordu — gratulacje
+        const resultEl = document.getElementById('ghost-result');
+        if (resultEl) {
+          const iconEl  = document.getElementById('ghost-result-icon');
+          const titleEl = document.getElementById('ghost-result-title');
+          const subEl   = document.getElementById('ghost-result-subtitle');
+          const pTimeEl = resultEl.querySelector('.ghost-result-player-time');
+          const gTimeEl = resultEl.querySelector('.ghost-result-ghost-time');
+          const vsEl    = resultEl.querySelector('.ghost-result-vs');
+          const labelEl = resultEl.querySelector('.ghost-result-time-label');
 
-        if (raceGhostTimeMs != null && raceGhostTimeMs > 0) {
-          const won = playerTime < raceGhostTimeMs;
-          if (iconEl)  iconEl.textContent  = won ? '🏆' : '🍌';
-          if (titleEl) titleEl.textContent = won
-            ? ((t && t('ghost.win_title'))  || 'WYGRAŁEŚ!')
-            : ((t && t('ghost.lose_title')) || 'PRZEGRAŁEŚ');
-          if (subEl)   subEl.textContent   = won
-            ? ((t && t('ghost.win_subtitle'))  || 'Pobiłeś rekord ducha')
-            : ((t && t('ghost.lose_subtitle')) || 'Duch był szybszy');
-          if (pTimeEl) pTimeEl.textContent = (playerTime / 1000).toFixed(3) + 's';
-          if (gTimeEl) { gTimeEl.textContent = (raceGhostTimeMs / 1000).toFixed(3) + 's'; gTimeEl.style.display = ''; }
-          if (vsEl)    vsEl.style.display = '';
-          if (labelEl) labelEl.textContent = (t && t('ghost.your_time')) || 'Twój czas:';
-          resultEl.classList.add(won ? 'win' : 'lose');
-          console.log(won ? '🏆 [result] WYGRAŁEŚ!' : '🍌 [result] PRZEGRAŁEŚ');
-        } else {
+          resultEl.classList.remove('win', 'lose');
+          resultEl.classList.add('neutral');
           if (iconEl)  iconEl.textContent  = '🏁';
           if (titleEl) titleEl.textContent = (t && t('ghost.first_title')) || 'GRATULACJE!';
           if (subEl)   subEl.textContent   = (t && t('ghost.first_subtitle')) || 'Zaliczyłeś tor';
@@ -512,33 +687,26 @@ window.startSimulator = function(worldKey) {
           if (gTimeEl) gTimeEl.style.display = 'none';
           if (vsEl)    vsEl.style.display = 'none';
           if (labelEl) labelEl.textContent = (t && t('ghost.your_time')) || 'Twój czas:';
-          resultEl.classList.add('neutral');
-          console.log('🏁 [result] Gratulacje (brak wyścigu)');
-        }
 
-        resultEl.classList.remove('hidden');
-        resultEl.classList.remove('show');
-        void resultEl.offsetWidth;
-        resultEl.classList.add('show');
-
-        clearTimeout(window.__ghostResultTimer);
-        window.__ghostResultTimer = setTimeout(() => {
+          resultEl.classList.remove('hidden');
           resultEl.classList.remove('show');
-          setTimeout(() => resultEl.classList.add('hidden'), 400);
-        }, 5000);
+          void resultEl.offsetWidth;
+          resultEl.classList.add('show');
+          console.log('🏁 [result] Gratulacje (pierwszy przejazd)');
+        }
       }
 
-      // Zrestartuj nagrywanie na nowe okrążenie
-      ghostRecordingStarted = true;
-      ghost.startRecording(performance.now());
+      scheduleAutoReset();
+    } else {
+      // Gracz doleciał DRUGI (ghost już był) — wynik już wisi
+      console.log('🏁 [finish] gracz doleciał drugi — auto-reset');
+      scheduleAutoReset();
     }
-
-    // Reset stanu wyścigu (next round ustawi to przez freshLap)
-    raceGhostTimeMs = null;
   };
 
-  gateTracker._emitProgress();
-
+  // ════════════════════════════════════════════════════════════════
+  // DRON
+  // ════════════════════════════════════════════════════════════════
   const drone = {
     pos: new THREE.Vector3(cfg.spawn.x, cfg.spawn.y, cfg.spawn.z),
     vel: new THREE.Vector3(0, 0, 0),
@@ -619,20 +787,11 @@ window.startSimulator = function(worldKey) {
     }
     if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') {
       e.preventDefault();
-      if (gateTracker) {
-        gateTracker.restart();
-        motorAudio.beep(440, 0.15, 0.10);
-        if (ghost) { ghost.stopPlayback(); ghost.startRecording(performance.now()); ghostRecordingStarted = true; }
-        raceGhostTimeMs = null;
-        const intro = document.getElementById('ghost-intro');
-        if (intro) { intro.classList.remove('show'); intro.classList.add('hidden'); }
-        const resultEl = document.getElementById('ghost-result');
-        if (resultEl) { resultEl.classList.remove('show'); resultEl.classList.add('hidden'); }
-        const destroyedEl = document.getElementById('ghost-destroyed');
-        if (destroyedEl) { destroyedEl.classList.remove('show'); destroyedEl.classList.add('hidden'); }
-        document.body.classList.remove('screen-shake');
-        console.log('🔄 Restart okrążenia');
-      }
+      // Awaryjny restart — pełny reset bez zapisu
+      if (autoResetTimer) { clearTimeout(autoResetTimer); autoResetTimer = null; }
+      performAutoReset();
+      motorAudio.beep(440, 0.15, 0.10);
+      console.log('🔄 [R] Awaryjny restart');
       return;
     }
     if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') { e.preventDefault(); audioState.masterMute = !audioState.masterMute; applyAudioState(); return; }
@@ -642,6 +801,9 @@ window.startSimulator = function(worldKey) {
 
   addEventListener('keydown', onKeyDown);
 
+  // ================================================================
+  // FIZYKA — ARCADE
+  // ================================================================
   function stepPhysicsArcade(dt, inp) {
     const throttle01 = (inp.throttle + 1) / 2;
     const thrust = throttle01 * PHYS.thrustFactor;
@@ -658,6 +820,9 @@ window.startSimulator = function(worldKey) {
     drone.roll  =  inp.roll  * PHYS.visualTilt;
   }
 
+  // ================================================================
+  // FIZYKA — REALISTIC
+  // ================================================================
   function stepPhysicsRealistic(dt, inp) {
     drone.targetPitch = -inp.pitch * PHYS.maxTiltAngle;
     drone.targetRoll  =  inp.roll  * PHYS.maxTiltAngle;
@@ -701,6 +866,9 @@ window.startSimulator = function(worldKey) {
     }
   }
 
+  // ================================================================
+  // GŁÓWNA PĘTLA
+  // ================================================================
   function animate() {
     rafId = requestAnimationFrame(animate);
     const now = performance.now();
@@ -773,14 +941,20 @@ window.startSimulator = function(worldKey) {
       if (drone.vel.y > 0) drone.vel.y = 0;
     }
 
+    // ─── Ghost ───
     if (ghost) {
-      const currentLapTime = gateTracker ? (now - gateTracker.startTime) : 0;
-      if (ghostRecordingStarted) {
+      const currentLapTime = raceActive ? (now - raceStartTime) : null;
+
+      // Nagrywanie: od startu wyścigu do jego końca
+      if (raceActive && !raceFinished) {
         ghost.record(drone.pos, { yaw: drone.yaw, pitch: drone.pitch, roll: drone.roll }, now);
       }
+
+      // Playback + delta + taranowanie
       ghost.update(now, currentLapTime, drone.pos);
     }
 
+    // ─── Kamera ───
     if (!cameraSmooth.initialized) {
       cameraSmooth.pitch = drone.pitch;
       cameraSmooth.roll  = drone.roll;
@@ -798,6 +972,7 @@ window.startSimulator = function(worldKey) {
     camera.rotation.x = cameraSmooth.pitch + cameraAngleRad;
     camera.rotation.z = cameraSmooth.roll;
 
+    // ─── HUD ───
     const hudThr = document.getElementById('thr'); if (hudThr) hudThr.textContent = inp.throttle.toFixed(2);
     const hudYaw = document.getElementById('yaw'); if (hudYaw) hudYaw.textContent = inp.yaw.toFixed(2);
     const hudRol = document.getElementById('rol'); if (hudRol) hudRol.textContent = inp.roll.toFixed(2);
@@ -816,12 +991,8 @@ window.startSimulator = function(worldKey) {
   };
   addEventListener('resize', onResize);
 
-  simState = {
-    renderer, scene, camera, disposables, onResize, onKeyDown,
-    collisions, gateTracker, ghost,
-    getRafId: () => rafId
-  };
-
+  // ─── Start ───
+  gateTracker._emitProgress();
   animate();
 };
 

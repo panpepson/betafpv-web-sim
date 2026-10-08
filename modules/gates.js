@@ -1,13 +1,5 @@
 // modules/gates.js
 // F1 — Licznik bramek + detekcja przejścia/kolizji z obręczą
-// + zmiana koloru po zaliczeniu (czerwony → zielony)
-// + PO UKOŃCZENIU: przelot przez zieloną bramkę resetuje TYLKO ją (wraca na czerwony)
-//
-// v4:
-//   - onFreshLapStart odpala się przy przejściu przez bramkę #1
-//     (zarówno normalnym, jak i przy „gaszeniu")
-//   - Blokada przed powtórzeniem przeniesiona do main.js (raceGhostTimeMs)
-//   - resetDelayMs domyślnie 800 ms
 
 import * as THREE from 'three';
 
@@ -77,10 +69,7 @@ class Gate {
 
   tick(dt) {
     if (!this.passed) return;
-    this._emissiveIntensity = Math.max(
-      0.2,
-      0.6 + Math.sin(performance.now() * 0.006) * 0.25
-    );
+    this._emissiveIntensity = Math.max(0.2, 0.6 + Math.sin(performance.now() * 0.006) * 0.25);
     this._materials.forEach((m) => {
       if ('emissiveIntensity' in m) m.emissiveIntensity = this._emissiveIntensity;
     });
@@ -89,10 +78,7 @@ class Gate {
 
 export class GateTracker {
   constructor(gates = [], opts = {}) {
-    this.gates = gates.map((g) =>
-      g instanceof Gate ? g : new Gate(g, opts)
-    );
-
+    this.gates = gates.map((g) => g instanceof Gate ? g : new Gate(g, opts));
     this.droneRadius = opts.droneRadius ?? 0.6;
     this.restitution = opts.restitution ?? 0.45;
     this.passCooldownMs = opts.passCooldownMs ?? 600;
@@ -102,14 +88,10 @@ export class GateTracker {
     this.onGateHit = null;
     this.onProgress = null;
     this.onFinish = null;
-    this.onGateReset = null;
-    this.onFreshLapStart = null;
 
     this.startTime = performance.now();
     this.finished = false;
     this.finishTime = null;
-
-    this.resetDelayMs = opts.resetDelayMs ?? 800;
 
     this._tmpA = new THREE.Vector3();
     this._tmpB = new THREE.Vector3();
@@ -129,9 +111,7 @@ export class GateTracker {
     this._emitProgress();
   }
 
-  restart() {
-    this.reset();
-  }
+  restart() { this.reset(); }
 
   get progress() {
     return {
@@ -143,19 +123,16 @@ export class GateTracker {
 
   update(dronePos, dt, now = performance.now()) {
     const hits = [];
-
     for (let idx = 0; idx < this.gates.length; idx++) {
       const gate = this.gates[idx];
       if (gate.tick) gate.tick(dt);
 
       const toDrone = this._tmpA.copy(dronePos).sub(gate.position);
       const along = toDrone.dot(gate.normal);
-
       const radialVec = this._tmpB.copy(gate.normal).multiplyScalar(along);
       const radialOnly = toDrone.clone().sub(radialVec);
       const radialDist = radialOnly.length();
 
-      // === 1) KOLIZJA Z OBRĘCZĄ ===
       const ringInner = gate.ringRadius - gate.ringThickness;
       const ringOuter = gate.ringRadius + gate.ringThickness;
       const inRingBand = radialDist >= ringInner && radialDist <= ringOuter;
@@ -164,19 +141,16 @@ export class GateTracker {
       if (inRingBand && nearPlane && radialDist > 0.001) {
         const normal = radialOnly.clone().normalize();
         hits.push({
-          gate,
-          normal,
+          gate, normal,
           restitution: this.restitution,
           penetration: this.droneRadius + gate.ringThickness - Math.abs(along)
         });
         if (this.onGateHit) this.onGateHit(gate, hits[hits.length - 1]);
       }
 
-      // === 2) PRZEJŚCIE PRZEZ ŚRODEK ===
       const ringInnerTolerant = ringInner + this.droneRadius * 0.5;
       const insideRingNow  = radialDist < ringInnerTolerant;
-      const insideRingPrev =
-        gate.prevRadialDist !== null && gate.prevRadialDist < ringInnerTolerant;
+      const insideRingPrev = gate.prevRadialDist !== null && gate.prevRadialDist < ringInnerTolerant;
       const insideRing = insideRingNow || insideRingPrev;
 
       if (gate.prevSide !== null && insideRing) {
@@ -186,23 +160,9 @@ export class GateTracker {
 
         if (crossed) {
           const canPass = now >= gate.cooldownUntil && !gate.passed;
-          const canReset =
-            this.finished &&
-            this.finishTime &&
-            (now - this.finishTime) > this.resetDelayMs &&
-            gate.passed &&
-            now >= gate.cooldownUntil;
-
-          // A) Normalny przelot przez czerwoną bramkę → zaznacz zieloną
           if (canPass) {
             gate.markPassed(this.passedColor);
             gate.cooldownUntil = now + this.passCooldownMs;
-
-            // 🔧 Sygnał startu nowego okrążenia (bramka #1, nie w trakcie finiszu)
-            if (idx === 0 && !this.finished) {
-              if (this.onFreshLapStart) this.onFreshLapStart(gate, idx);
-            }
-
             if (this.onGatePassed) this.onGatePassed(gate, idx);
             this._emitProgress();
 
@@ -210,23 +170,8 @@ export class GateTracker {
               this.finished = true;
               this.finishTime = now;
               if (this.onFinish) this.onFinish();
-              if (this.onProgress) {
-                this.onProgress({ ...this.progress, finished: true });
-              }
+              if (this.onProgress) this.onProgress({ ...this.progress, finished: true });
             }
-          }
-          // B) Po ukończeniu toru: przelot przez ZIELONĄ bramkę → reset TYLKO JEJ
-          else if (canReset) {
-            const wasFirstGate = (idx === 0);
-            gate.resetOne();
-
-            // 🔧 „Gaszenie" bramki #1 = start nowego okrążenia
-            if (wasFirstGate) {
-              if (this.onFreshLapStart) this.onFreshLapStart(gate, idx);
-            }
-
-            if (this.onGateReset) this.onGateReset(gate, idx);
-            this._emitProgress();
           }
         }
       }
@@ -234,7 +179,6 @@ export class GateTracker {
       gate.prevSide = along;
       gate.prevRadialDist = radialDist;
     }
-
     return hits;
   }
 
@@ -247,8 +191,6 @@ export class GateTracker {
     this.onGateHit = null;
     this.onProgress = null;
     this.onFinish = null;
-    this.onGateReset = null;
-    this.onFreshLapStart = null;
     this.gates = [];
   }
 }

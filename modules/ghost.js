@@ -1,23 +1,20 @@
 // modules/ghost.js
 // 👻 Ghost Replay — zapis i odtwarzanie najlepszego przejazdu.
 //
-// v5:
-//   - Delta czasu liczona przez porównanie POZYCJI 3D gracza z klatkami ducha
-//   - Sanity check |delta| > 120 → null
-//   - Duch dolatuje PŁYNNIE do ostatniej klatki (nie zatrzymuje się w bramce)
-//   - Auto-ukrycie ducha 1.5 s po zakończeniu playbacku
-//   - TARANOWANIE: gdy gracz jest PRZED duchem (delta > 0) i w niego wleci,
-//     duch znika (z respawnem po 2 s). Wymaga włączonej opcji (patrz main.js).
-//   - onGhostIntro callback — pokazanie intro
-//   - baseColor — kolor ducha per plansza
+// v6 (finalna logika):
+//   - Ghost startuje DOPIERO gdy gracz przeleci przez bramkę #1
+//   - onGhostFinished callback — wołane gdy ghost dolatuje do końca playbacku
+//   - Możliwość wznowienia playbacku po zniszczeniu (respawn)
+//   - Intro 6 s
+//   - Taranowanie: gdy gracz PRZED duchem (delta > 0) i blisko → zniszczenie
 
 import * as THREE from 'three';
 
 const STORAGE_PREFIX = 'betafpv_ghost_';
-const SAMPLE_INTERVAL_MS = 33;    // ~30 Hz
-const INTRO_DURATION_MS = 6000;   // 6 s
-const TACKLE_RADIUS = 2.0;        // promień do wykrycia taranowania
-const TACKLE_RESPAWN_MS = 2000;   // respawn ducha po zniszczeniu
+const SAMPLE_INTERVAL_MS = 33;
+const INTRO_DURATION_MS = 6000;
+const TACKLE_RADIUS = 2.0;
+const TACKLE_RESPAWN_MS = 2000;
 
 // ─── Prosty, tani mesh drona-ducha ───
 function makeGhostDrone(baseColor = 0x66ccff) {
@@ -115,7 +112,6 @@ export class GhostReplay {
     this.worldId = worldId;
     this.scene = scene;
     this.enabled = opts.enabled !== false;
-
     this.baseColor = opts.baseColor ?? 0x66ccff;
 
     // Nagrywanie
@@ -129,16 +125,18 @@ export class GhostReplay {
     this.playing = false;
     this.playbackStart = 0;
     this.playbackIndex = 0;
-    this.finishedPlayback = false;   // gdy playback dobiegł końca
+    this.finished = false;         // playback dotarł do końca
 
     // Taranowanie
-    this.destroyed = false;          // duch zniszczony przez gracza
-    this.respawnAt = 0;              // kiedy może się odrodzić
-    this.onGhostDestroyed = null;    // (info) => void
-    this.onGhostRespawn = null;      // () => void
+    this.destroyed = false;
+    this.respawnAt = 0;
 
-    // Intro
-    this.onGhostIntro = null;
+    // Callbacks
+    this.onGhostIntro = null;      // ({timeMs, durationMs, baseColor})
+    this.onGhostFinished = null;   // () — playback dobiegł końca
+    this.onGhostDestroyed = null;  // ({respawnMs})
+    this.onGhostRespawn = null;    // ()
+    this.onDeltaUpdate = null;     // (deltaSec|null, isAhead)
 
     // Wizualizacja
     const ghost = makeGhostDrone(this.baseColor);
@@ -152,11 +150,7 @@ export class GhostReplay {
     this.trail.line.visible = false;
     this.trail.setColor(this.baseColor);
 
-    this.onDeltaUpdate = null;
-
-    this._tmpVec = new THREE.Vector3();
     this._currentPos = new THREE.Vector3();
-    this._lastDelta = 0;   // ostatnia policzona delta (dla taranowania)
   }
 
   // ─── localStorage ───
@@ -220,7 +214,6 @@ export class GhostReplay {
   record(dronePos, rot, now) {
     if (!this.recording) return;
     if (now - this.lastSampleTime < SAMPLE_INTERVAL_MS) return;
-
     this.recordedFrames.push({
       t: now - this.recordStartTime,
       x: dronePos.x, y: dronePos.y, z: dronePos.z,
@@ -229,13 +222,17 @@ export class GhostReplay {
     this.lastSampleTime = now;
   }
 
+  /**
+   * Wywoływane gdy gracz ukończy okrążenie.
+   * Zapisuje TYLKO jeśli lepszy czas.
+   * @returns {boolean} true jeśli zapisano nowy rekord
+   */
   onLapComplete(timeMs) {
     if (!this.recording) {
-      console.log('👻 [ghost] onLapComplete: brak nagrania (recording === false)');
+      console.log('👻 [ghost] onLapComplete: brak nagrania');
       return false;
     }
     if (this.recordedFrames.length === 0) {
-      console.log('👻 [ghost] onLapComplete: 0 klatek');
       this.stopRecording();
       return false;
     }
@@ -267,6 +264,7 @@ export class GhostReplay {
     };
   }
 
+  /** Start playbacku od klatki 0. */
   startPlayback(now = performance.now()) {
     if (!this.enabled) return;
     if (!this.playback) {
@@ -275,11 +273,11 @@ export class GhostReplay {
     if (!this.playback || !this.playback.frames.length) return;
 
     this.playing = true;
-    this.playbackStart = now;
-    this.playbackIndex = 0;
-    this.finishedPlayback = false;
+    this.finished = false;
     this.destroyed = false;
     this.respawnAt = 0;
+    this.playbackStart = now;
+    this.playbackIndex = 0;
     this.ghostGroup.visible = true;
     this.trail.line.visible = true;
     this.trail.clear();
@@ -297,39 +295,14 @@ export class GhostReplay {
 
   stopPlayback() {
     this.playing = false;
-    this.finishedPlayback = false;
+    this.finished = false;
     this.destroyed = false;
     this.ghostGroup.visible = false;
     this.trail.line.visible = false;
     if (this.onDeltaUpdate) this.onDeltaUpdate(null, false);
   }
 
-  restartPlayback(now = performance.now()) {
-    if (!this.enabled) return;
-    if (!this.playback) {
-      this.playback = this._unpack(this.loadSaved());
-    }
-    if (!this.playback || !this.playback.frames.length) {
-      console.log('👻 [ghost] brak rekordu do odtworzenia');
-      return;
-    }
-    this.playing = false;
-    this.startPlayback(now);
-  }
-
-  setEnabled(enabled, now = performance.now()) {
-    this.enabled = !!enabled;
-    if (!this.enabled) {
-      this.stopPlayback();
-    } else if (this.playback) {
-      this.startPlayback(now);
-    }
-  }
-
-  /**
-   * Zniszczenie ducha przez taranowanie (wołane z main.js).
-   * @param {number} now  performance.now()
-   */
+  /** Zniszczenie ghosta (taranowanie). */
   destroy(now = performance.now()) {
     if (this.destroyed) return;
     this.destroyed = true;
@@ -337,13 +310,19 @@ export class GhostReplay {
     this.ghostGroup.visible = false;
     this.trail.line.visible = false;
     if (this.onGhostDestroyed) this.onGhostDestroyed({ respawnMs: TACKLE_RESPAWN_MS });
-    console.log('💥 [ghost] zniszczony! Respawn za', (TACKLE_RESPAWN_MS / 1000).toFixed(1), 's');
+    console.log('💥 [ghost] zniszczony! Respawn za', (TACKLE_RESPAWN_MS/1000).toFixed(1), 's');
   }
 
-  update(now, currentTimeMs, playerPos) {
-    // ─── Respawn po zniszczeniu ───
+  /**
+   * Wywoływane w pętli — aktualizuje pozycję ghosta.
+   * @param {number} now          performance.now()
+   * @param {number|null} currentLapTime  aktualny czas okrążenia (ms) lub null (pauza)
+   * @param {THREE.Vector3} playerPos     pozycja gracza (do delty i taranowania)
+   */
+  update(now, currentLapTime, playerPos) {
+    // Respawn po zniszczeniu
     if (this.destroyed) {
-      if (now >= this.respawnAt && this.enabled) {
+      if (now >= this.respawnAt && this.enabled && this.playing) {
         this.destroyed = false;
         this.ghostGroup.visible = true;
         this.trail.line.visible = true;
@@ -365,54 +344,28 @@ export class GhostReplay {
     }
 
     // ─── Koniec playbacku ───
-    // UWAGA: zamiast zatrzymywać ducha w miejscu, pozwalamy mu kontynuować
-    // po ostatniej klatce (interpolacja liniowa w ostatnim kierunku) przez
-    // krótki czas, potem auto-hide.
-    if (this.playbackIndex >= frames.length - 1) {
-      const last = frames[frames.length - 1];
-      const beforeLast = frames[Math.max(0, frames.length - 2)];
+    if (this.playbackIndex >= frames.length - 1 && t > frames[frames.length - 1].t) {
+      if (!this.finished) {
+        // Pierwszy raz wykryto koniec — powiadom
+        this.finished = true;
+        const last = frames[frames.length - 1];
+        this._applyPose(last.x, last.y, last.z, last.yaw, last.pitch, last.roll);
+        this._currentPos.set(last.x, last.y, last.z);
+        if (this.onGhostFinished) this.onGhostFinished();
+      }
 
-      // Kierunek ostatniego odcinka (do płynnego „dolotu")
-      const dx = last.x - beforeLast.x;
-      const dy = last.y - beforeLast.y;
-      const dz = last.z - beforeLast.z;
-      const dLen = Math.hypot(dx, dy, dz) || 1;
-      const dirX = dx / dLen, dirY = dy / dLen, dirZ = dz / dLen;
-
-      // „Overshoot" — duch leci jeszcze ~0.4 s po ostatniej klatce w tym samym kierunku
-      const overshootMs = 400;
-      const overshootSec = 0.4;
-      const timeAfterEnd = t - last.t; // ms
-      const overshoot = Math.min(overshootMs / 1000, Math.max(0, timeAfterEnd / 1000));
-
-      const speedEstimate = dLen / Math.max(0.001, (last.t - beforeLast.t) / 1000); // m/s
-      const travelDist = speedEstimate * Math.min(overshootSec, overshoot);
-
-      const x = last.x + dirX * travelDist;
-      const y = last.y + dirY * travelDist;
-      const z = last.z + dirZ * travelDist;
-
-      this._applyPose(x, y, z, last.yaw, last.pitch, last.roll);
-      // nie dodajemy do śladu po końcu (żeby nie wydłużać)
-
-      // Auto-ukrycie dopiero po 1.5 s od końca
-      if (timeAfterEnd > 1500) {
+      // Auto-ukrycie po 1.5 s od końca
+      const timeSinceEnd = t - frames[frames.length - 1].t;
+      if (timeSinceEnd > 1500) {
         this.playing = false;
-        this.finishedPlayback = true;
         this.ghostGroup.visible = false;
         this.trail.line.visible = false;
         if (this.onDeltaUpdate) this.onDeltaUpdate(null, false);
-        return;
-      }
-
-      // Delta w końcówce
-      if (this.onDeltaUpdate && currentTimeMs != null && playerPos) {
-        const delta = this._computeDelta(playerPos, currentTimeMs);
-        if (delta != null) this.onDeltaUpdate(delta, delta > 0);
       }
       return;
     }
 
+    // ─── Interpolacja ───
     const a = frames[this.playbackIndex];
     const b = frames[Math.min(this.playbackIndex + 1, frames.length - 1)];
     const span = Math.max(1, b.t - a.t);
@@ -429,27 +382,21 @@ export class GhostReplay {
     this.trail.push(x, y, z);
     this._currentPos.set(x, y, z);
 
-    // ─── Delta ───
-    let delta = 0;
-    if (this.onDeltaUpdate && currentTimeMs != null && playerPos) {
-      const d = this._computeDelta(playerPos, currentTimeMs);
-      if (d != null) {
-        delta = d;
-        this._lastDelta = d;
-        const isAhead = d > 0;
-        this.onDeltaUpdate(d, isAhead);
-      }
-    }
-
-    // ─── Taranowanie: gdy gracz jest PRZED duchem (delta > 0) i blisko ───
-    // „delta > 0" znaczy: duch jest wcześniej w torze, czyli gracz jest przed nim → zielony.
-    if (playerPos && !this.destroyed && delta > 0) {
-      const dx = playerPos.x - this._currentPos.x;
-      const dy = playerPos.y - this._currentPos.y;
-      const dz = playerPos.z - this._currentPos.z;
-      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-      if (dist < TACKLE_RADIUS) {
-        this.destroy(now);
+    // ─── Delta + taranowanie ───
+    if (playerPos && currentLapTime != null) {
+      const delta = this._computeDelta(playerPos, currentLapTime);
+      if (delta != null) {
+        if (this.onDeltaUpdate) this.onDeltaUpdate(delta, delta > 0);
+        // Taranowanie tylko gdy gracz PRZED duchem (delta > 0)
+        if (delta > 0 && !this.destroyed) {
+          const dx = playerPos.x - this._currentPos.x;
+          const dy = playerPos.y - this._currentPos.y;
+          const dz = playerPos.z - this._currentPos.z;
+          const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+          if (dist < TACKLE_RADIUS) {
+            this.destroy(now);
+          }
+        }
       }
     }
   }
@@ -457,29 +404,20 @@ export class GhostReplay {
   _computeDelta(playerPos, currentTimeMs) {
     if (!this.playback) return null;
     const frames = this.playback.frames;
-
     const start = Math.max(0, this.playbackIndex - 60);
     const end = Math.min(frames.length - 1, this.playbackIndex + 60);
 
-    let best = null;
-    let bestDist = Infinity;
-
+    let best = null, bestDist = Infinity;
     for (let i = start; i <= end; i++) {
       const f = frames[i];
-      const dx = f.x - playerPos.x;
-      const dy = f.y - playerPos.y;
-      const dz = f.z - playerPos.z;
+      const dx = f.x - playerPos.x, dy = f.y - playerPos.y, dz = f.z - playerPos.z;
       const d2 = dx*dx + dy*dy + dz*dz;
       if (d2 < bestDist) { bestDist = d2; best = f; }
     }
-
     if (!best) return null;
 
-    const deltaMs = best.t - currentTimeMs;
-    const deltaSec = deltaMs / 1000;
-
+    const deltaSec = (best.t - currentTimeMs) / 1000;
     if (Math.abs(deltaSec) > 120) return null;
-
     return deltaSec;
   }
 
@@ -489,7 +427,6 @@ export class GhostReplay {
     this.ghostGroup.rotation.y = yaw;
     this.ghostGroup.rotation.x = pitch;
     this.ghostGroup.rotation.z = roll;
-
     const spin = performance.now() * 0.03;
     for (let i = 0; i < this.ghostProps.length; i++) {
       this.ghostProps[i].rotation.z = spin + i * Math.PI / 2;
@@ -497,9 +434,7 @@ export class GhostReplay {
   }
 
   setGhostColor(hex) {
-    for (const m of this.ghostMaterials) {
-      m.color.setHex(hex);
-    }
+    for (const m of this.ghostMaterials) m.color.setHex(hex);
     this.trail.setColor(hex);
   }
 
