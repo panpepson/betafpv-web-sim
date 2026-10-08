@@ -34,18 +34,27 @@
 
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="stylesheet" href="style.css">
-</head>
 
-<!-- Google tag (gtag.js) -->
+<!-- Google tag (gtag.js) — z Consent Mode v2 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-9C0H84MJXF"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
 
+  // Domyślnie: wszystko denied (RODO-safe)
+  gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied',
+    'wait_for_update': 500
+  });
+
+  gtag('js', new Date());
   gtag('config', 'G-9C0H84MJXF');
 </script>
 
+</head>
 <body>
 
 <div id="hud" class="hidden">
@@ -264,6 +273,23 @@
 <button id="mute-btn" title="M — mute all / N — engine only" style="position:fixed;bottom:16px;right:16px;z-index:9999;">🔊</button>
 <button id="music-btn" title="B — background music" style="position:fixed;bottom:16px;right:70px;z-index:9999;">🎵</button>
 
+
+
+<!-- ─── Cookie banner (RODO) ─── -->
+<div id="cookie-banner" class="hidden" role="dialog" aria-live="polite">
+  <div class="cookie-text">
+    <span data-i18n="cookies.text">
+      Ta strona używa Google Analytics 4 do anonimowych statystyk.
+      Możesz zaakceptować lub odrzucić.
+    </span>
+  </div>
+  <div class="cookie-actions">
+    <button id="cookie-accept" class="cookie-btn accept" data-i18n="cookies.accept">Akceptuję</button>
+    <button id="cookie-reject" class="cookie-btn reject" data-i18n="cookies.reject">Odrzucam</button>
+  </div>
+</div>
+
+
 <script type="module">
   import { initI18n, toggleLang } from './i18n/index.js';
 
@@ -324,6 +350,53 @@
       localStorage.setItem('betafpv_ghost_enabled', ghostToggle.checked);
     });
   }
+
+
+// ─── Cookie consent ───
+const CONSENT_KEY = 'betafpv_cookie_consent';
+const banner = document.getElementById('cookie-banner');
+
+function applyConsent(granted) {
+  if (typeof gtag === 'function') {
+    gtag('consent', 'update', {
+      'ad_storage':        granted ? 'granted' : 'denied',
+      'ad_user_data':      granted ? 'granted' : 'denied',
+      'ad_personalization':granted ? 'granted' : 'denied',
+      'analytics_storage': granted ? 'granted' : 'denied'
+    });
+  }
+}
+
+const savedConsent = localStorage.getItem(CONSENT_KEY);
+
+if (savedConsent === 'granted') {
+  applyConsent(true);
+  if (banner) banner.classList.add('hidden');
+} else if (savedConsent === 'denied') {
+  applyConsent(false);
+  if (banner) banner.classList.add('hidden');
+} else {
+  // brak wyboru — pokaż baner (po inicjalizacji i18n)
+  if (banner) {
+    banner.classList.remove('hidden');
+    requestAnimationFrame(() => banner.classList.add('show'));
+  }
+}
+
+document.getElementById('cookie-accept')?.addEventListener('click', () => {
+  localStorage.setItem(CONSENT_KEY, 'granted');
+  applyConsent(true);
+  banner.classList.remove('show');
+  setTimeout(() => banner.classList.add('hidden'), 300);
+});
+
+document.getElementById('cookie-reject')?.addEventListener('click', () => {
+  localStorage.setItem(CONSENT_KEY, 'denied');
+  applyConsent(false);
+  banner.classList.remove('show');
+  setTimeout(() => banner.classList.add('hidden'), 300);
+});
+
 
   await import('./main.js');
   await import('./calibration.js');

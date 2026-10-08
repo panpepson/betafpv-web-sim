@@ -119,5 +119,10 @@
     "in_progress": "w trakcie",
     "first_time_hint": "Kolejny lot — ścigaj ducha!",
     "record_cleared": "👻 Rekord ghosta wyczyszczony — lecisz sam!"
-  }
+  },
+"cookies": {
+  "text": "Ta strona używa Google Analytics 4 do anonimowych statystyk. Możesz zaakceptować lub odrzucić.",
+  "accept": "Akceptuję",
+  "reject": "Odrzucam"
+}
 }

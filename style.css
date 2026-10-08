@@ -700,3 +700,83 @@ body.screen-shake {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+
+/* ─── Cookie banner (RODO) ─── */
+#cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 22px;
+  background: rgba(10, 20, 10, 0.94);
+  border-top: 2px solid #0f0;
+  font-family: monospace;
+  color: #d8ffd8;
+  font-size: 14px;
+  line-height: 1.4;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+#cookie-banner.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+#cookie-banner.hidden {
+  display: none;
+}
+
+#cookie-banner .cookie-text {
+  flex: 1;
+  min-width: 0;
+}
+
+#cookie-banner .cookie-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+#cookie-banner .cookie-btn {
+  padding: 8px 18px;
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+#cookie-banner .cookie-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+#cookie-banner .cookie-btn.accept {
+  background: #0f0;
+  color: #000;
+}
+#cookie-banner .cookie-btn.reject {
+  background: transparent;
+  color: #0f0;
+  border: 1px solid #0f0;
+}
+
+@media (max-width: 640px) {
+  #cookie-banner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    padding: 14px;
+  }
+  #cookie-banner .cookie-actions {
+    justify-content: center;
+  }
+}

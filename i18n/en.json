@@ -119,5 +119,10 @@
     "in_progress": "in progress",
     "first_time_hint": "Next flight — chase the ghost!",
     "record_cleared": "👻 Ghost record cleared — you're on your own!"
-  }
+  },
+"cookies": {
+  "text": "This site uses Google Analytics 4 for anonymous statistics. You can accept or reject.",
+  "accept": "Accept",
+  "reject": "Reject"
+}
 }
