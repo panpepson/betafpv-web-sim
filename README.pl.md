@@ -28,7 +28,6 @@ Projekt napisany w całości w JavaScript (ES Modules) z wykorzystaniem **Three.
 - 🧭 **Przełącznik kąta kamery FPV** — 0° / 20° / 35° na 3-pozycyjnym przełączniku aparatury.
 - 🌐 **Dwujęzyczny interfejs** — polski / angielski z automatycznym wykrywaniem języka.
 - 🔄 **Auto-połączenie** — automatycznie łączy się z aparaturą przy starcie, jeśli była wcześniej autoryzowana.
-- 🛠️ **Narzędzie diagnostyczne** — `detector.html` do analizy surowych raportów HID.
 
 ---
 

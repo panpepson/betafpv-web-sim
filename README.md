@@ -28,7 +28,6 @@ Written entirely in JavaScript (ES Modules) using **Three.js** for 3D rendering.
 - 🧭 **FPV camera angle switch** — 0° / 20° / 35° using a 3-position radio switch.
 - 🌐 **Bilingual UI** — English / Polish with automatic language detection.
 - 🔄 **Auto-connect** — reconnects to the radio on startup if it was previously authorized.
-- 🛠️ **Diagnostic tool** — `detector.html` for analyzing raw HID reports.
 
 ---
 
