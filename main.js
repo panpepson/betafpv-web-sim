@@ -8,9 +8,6 @@ import { WORLDS }         from './worlds/index.js';
 
 let simState = null;
 
-// ================================================================
-// ANTYSZUM
-// ================================================================
 const INPUT_SMOOTHING  = 0.60;
 const CAMERA_SMOOTHING = 0.75;
 const INPUT_DEADZONE   = 0.02;
@@ -24,26 +21,15 @@ function deadzone(v, threshold = INPUT_DEADZONE) {
   return sign * ((Math.abs(v) - threshold) / (1 - threshold));
 }
 
-// ================================================================
-// AUDIO — silnik
-// ================================================================
 const motorAudio = new MotorAudio({
-  baseFreq: 60,
-  maxFreq: 280,
-  baseGain: 0.02,
-  maxGain: 0.14,
-  baseCutoff: 400,
-  maxCutoff: 2800
+  baseFreq: 60, maxFreq: 280, baseGain: 0.02, maxGain: 0.14,
+  baseCutoff: 400, maxCutoff: 2800
 });
 
-// ================================================================
-// AUDIO — muzyka tła
-// ================================================================
 class BgMusic {
   constructor() {
     this.el = document.getElementById('bgMusic');
     this.userPaused = false;
-
     if (!this.el) {
       this.el = document.createElement('audio');
       this.el.id = 'bgMusic';
@@ -51,59 +37,29 @@ class BgMusic {
       this.el.preload = 'auto';
       this.el.muted = true;
       const src1 = document.createElement('source');
-      src1.src = 'audio/bg-music.ogg';
-      src1.type = 'audio/ogg';
+      src1.src = 'audio/bg-music.ogg'; src1.type = 'audio/ogg';
       const src2 = document.createElement('source');
-      src2.src = 'audio/bg-music.mp3';
-      src2.type = 'audio/mpeg';
-      this.el.appendChild(src1);
-      this.el.appendChild(src2);
+      src2.src = 'audio/bg-music.mp3'; src2.type = 'audio/mpeg';
+      this.el.appendChild(src1); this.el.appendChild(src2);
       document.body.appendChild(this.el);
     }
-
     this.el.muted = true;
     this.el.volume = 0.25;
-
-    this.el.play().catch((e) => {
-      console.warn('[music] autoplay muted deferred:', e.message);
-    });
+    this.el.play().catch((e) => console.warn('[music] autoplay muted deferred:', e.message));
   }
-
-  async play() {
-    if (this.userPaused) return;
-    try { await this.el.play(); } catch (e) { console.warn('[music] play deferred:', e.message); }
-  }
-
+  async play() { if (this.userPaused) return; try { await this.el.play(); } catch (e) { console.warn('[music] play deferred:', e.message); } }
   pause() { try { this.el.pause(); } catch (_) {} }
-
-  unmute() {
-    if (!this.el) return;
-    this.el.muted = false;
-    if (this.el.paused) this.play();
-  }
-
-  setUserMuted(m) {
-    this.userPaused = !!m;
-    if (this.userPaused) this.pause();
-    else this.play();
-  }
+  unmute() { if (!this.el) return; this.el.muted = false; if (this.el.paused) this.play(); }
+  setUserMuted(m) { this.userPaused = !!m; if (this.userPaused) this.pause(); else this.play(); }
 }
 
 const bgMusic = new BgMusic();
 
-// ================================================================
-// MASTER MUTE
-// ================================================================
-const audioState = {
-  masterMute: false,
-  engineMuted: false,
-  musicMuted: false
-};
+const audioState = { masterMute: false, engineMuted: false, musicMuted: false };
 
 function applyAudioState() {
   const engineOff = audioState.masterMute || audioState.engineMuted;
   const musicOff  = audioState.masterMute || audioState.musicMuted;
-
   motorAudio.setMuted(engineOff);
   bgMusic.setUserMuted(musicOff);
   updateAudioHud();
@@ -112,15 +68,12 @@ function applyAudioState() {
 function updateAudioHud() {
   const engineOff = audioState.masterMute || audioState.engineMuted;
   const musicOff  = audioState.masterMute || audioState.musicMuted;
-
   const aEngine = document.getElementById('a-engine');
   const aMusic  = document.getElementById('a-music');
   if (aEngine) aEngine.classList.toggle('muted', engineOff);
   if (aMusic)  aMusic.classList.toggle('muted', musicOff);
-
   const btn = document.getElementById('mute-btn');
   if (btn) btn.textContent = audioState.masterMute ? '🔇' : (audioState.engineMuted ? '🔕' : '🔊');
-
   const mbtn = document.getElementById('music-btn');
   if (mbtn) mbtn.textContent = audioState.musicMuted ? '🔕' : '🎵';
 }
@@ -133,36 +86,22 @@ function updateAudioHud() {
   applyAudioState();
 })();
 
-// ================================================================
-// ODBLOKOWANIE AUDIO
-// ================================================================
 let __audioReady = false;
 
 async function ensureAudioInit() {
   if (__audioReady) return;
-
   try { await motorAudio.init(); } catch (e) { console.warn('[audio] init failed', e); }
-
   if (motorAudio.ctx && motorAudio.ctx.state === 'suspended') {
-    try {
-      await motorAudio.ctx.resume();
-      console.log('[audio] ctx.resume() →', motorAudio.ctx.state);
-    } catch (e) {
-      console.warn('[audio] ctx.resume() failed:', e.message);
-    }
+    try { await motorAudio.ctx.resume(); console.log('[audio] ctx.resume() →', motorAudio.ctx.state); }
+    catch (e) { console.warn('[audio] ctx.resume() failed:', e.message); }
   }
-
   bgMusic.unmute();
   await bgMusic.play();
   applyAudioState();
-
   const ctxState = motorAudio.ctx ? motorAudio.ctx.state : 'none';
   if (ctxState === 'running' || ctxState === 'none') {
-    __audioReady = true;
-    removeAudioUnlockListeners();
+    __audioReady = true; removeAudioUnlockListeners();
     console.log('✅ [audio] Odblokowane — AudioContext:', ctxState);
-  } else {
-    console.warn('⏳ [audio] AudioContext wciąż:', ctxState);
   }
 }
 
@@ -193,30 +132,19 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// ================================================================
-// PRZYCISKI AUDIO
-// ================================================================
 (function setupAudioButtons() {
   const btn = document.getElementById('mute-btn');
-  if (btn) {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await ensureAudioInit();
-      audioState.masterMute = !audioState.masterMute;
-      applyAudioState();
-    });
-  }
-
+  if (btn) btn.addEventListener('click', async (e) => {
+    e.stopPropagation(); await ensureAudioInit();
+    audioState.masterMute = !audioState.masterMute; applyAudioState();
+  });
   const musicBtn = document.getElementById('music-btn');
-  if (musicBtn) {
-    musicBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await ensureAudioInit();
-      audioState.musicMuted = !audioState.musicMuted;
-      localStorage.setItem('betafpv_music_mute', String(audioState.musicMuted));
-      applyAudioState();
-    });
-  }
+  if (musicBtn) musicBtn.addEventListener('click', async (e) => {
+    e.stopPropagation(); await ensureAudioInit();
+    audioState.musicMuted = !audioState.musicMuted;
+    localStorage.setItem('betafpv_music_mute', String(audioState.musicMuted));
+    applyAudioState();
+  });
 })();
 
 // ================================================================
@@ -225,15 +153,11 @@ document.addEventListener('visibilitychange', () => {
 window.startSimulator = function(worldKey) {
   const cfg = WORLDS[worldKey] || WORLDS.beginner;
   console.log('🚁 Start symulatora —', cfg.name, '| fizyka:', cfg.physics.mode, '| kamera:', cfg.camera.angle + '°');
-
   ensureAudioInit();
-
   if (simState) window.stopSimulator();
 
-  smoothedInput.throttle = 0;
-  smoothedInput.yaw = 0;
-  smoothedInput.roll = 0;
-  smoothedInput.pitch = 0;
+  smoothedInput.throttle = 0; smoothedInput.yaw = 0;
+  smoothedInput.roll = 0; smoothedInput.pitch = 0;
   cameraSmooth.initialized = false;
 
   const scene = new THREE.Scene();
@@ -254,30 +178,23 @@ window.startSimulator = function(worldKey) {
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
       mats.forEach(m => {
         disposables.materials.push(m);
-        for (const k in m) {
-          if (m[k] && m[k].isTexture) disposables.textures.push(m[k]);
-        }
+        for (const k in m) if (m[k] && m[k].isTexture) disposables.textures.push(m[k]);
       });
     }
   };
 
   const collisions = new CollisionSystem();
 
-  // ─── Światło ───
   const sun = new THREE.DirectionalLight(0xffffff, 1.2);
   sun.position.set(80, 150, 60);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -200;
-  sun.shadow.camera.right = 200;
-  sun.shadow.camera.top = 200;
-  sun.shadow.camera.bottom = -200;
-  sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = 400;
+  sun.shadow.camera.left = -200; sun.shadow.camera.right = 200;
+  sun.shadow.camera.top = 200;   sun.shadow.camera.bottom = -200;
+  sun.shadow.camera.near = 1;    sun.shadow.camera.far = 400;
   scene.add(sun);
   scene.add(new THREE.AmbientLight(0x8899aa, 0.7));
 
-  // ─── Niebo ───
   const skyGeo = new THREE.SphereGeometry(800, 32, 16);
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -290,47 +207,35 @@ window.startSimulator = function(worldKey) {
       void main() { float h = normalize(vPos).y * 0.5 + 0.5; gl_FragColor = vec4(mix(bottom, top, h), 1.0); }`
   });
   const skyMesh = new THREE.Mesh(skyGeo, skyMat);
-  scene.add(skyMesh);
-  track(skyMesh);
+  scene.add(skyMesh); track(skyMesh);
 
-  // ─── Ziemia ───
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(2000, 2000),
     new THREE.MeshLambertMaterial({ color: 0x3a7d2c })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
-  scene.add(ground);
-  track(ground);
+  scene.add(ground); track(ground);
 
   const grid = new THREE.GridHelper(2000, 200, 0x2d5a1e, 0x2d5a1e);
   grid.position.y = 0.01;
-  grid.material.opacity = 0.3;
-  grid.material.transparent = true;
-  scene.add(grid);
-  track(grid);
+  grid.material.opacity = 0.3; grid.material.transparent = true;
+  scene.add(grid); track(grid);
 
-  // ─── Górki ───
   cfg.hills.forEach(h => {
     const hillGeo = new THREE.SphereGeometry(h.radius, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
     const hill = new THREE.Mesh(hillGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
     hill.position.set(h.x, h.y, h.z);
     hill.scale.set(1, h.heightScale, 1);
-    hill.castShadow = true;
-    hill.receiveShadow = true;
-    scene.add(hill);
-    track(hill);
-
-    const hillRadius = h.radius;
-    const hillHeight = h.radius * h.heightScale;
+    hill.castShadow = true; hill.receiveShadow = true;
+    scene.add(hill); track(hill);
     collisions.addBox(
-      new THREE.Vector3(h.x - hillRadius, h.y, h.z - hillRadius),
-      new THREE.Vector3(h.x + hillRadius, h.y + hillHeight, h.z + hillRadius),
+      new THREE.Vector3(h.x - h.radius, h.y, h.z - h.radius),
+      new THREE.Vector3(h.x + h.radius, h.y + h.radius * h.heightScale, h.z + h.radius),
       { kind: 'hill' }
     );
   });
 
-  // ─── Woda ───
   if (cfg.water) {
     const water = new THREE.Mesh(
       new THREE.PlaneGeometry(cfg.water.w, cfg.water.d, 20, 20),
@@ -339,47 +244,32 @@ window.startSimulator = function(worldKey) {
     water.rotation.x = -Math.PI / 2;
     water.position.set(cfg.water.x, 0.15, cfg.water.z);
     water.receiveShadow = true;
-    scene.add(water);
-    track(water);
+    scene.add(water); track(water);
   }
 
-  // ─── Drzewa ───
   function makeTree(x, z, scale) {
     const group = new THREE.Group();
     const trunkGeo = new THREE.CylinderGeometry(0.5 * scale, 0.7 * scale, 4 * scale, 8);
     const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5c3a1e });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.y = 2 * scale; trunk.castShadow = true; group.add(trunk);
-    disposables.geometries.push(trunkGeo);
-    disposables.materials.push(trunkMat);
-
+    disposables.geometries.push(trunkGeo); disposables.materials.push(trunkMat);
     const c1Geo = new THREE.SphereGeometry(2.5 * scale, 10, 8);
     const c1Mat = new THREE.MeshLambertMaterial({ color: 0x2a5a1a });
     const c1 = new THREE.Mesh(c1Geo, c1Mat);
     c1.position.y = 5 * scale; c1.castShadow = true; group.add(c1);
-    disposables.geometries.push(c1Geo);
-    disposables.materials.push(c1Mat);
-
+    disposables.geometries.push(c1Geo); disposables.materials.push(c1Mat);
     const c2Geo = new THREE.SphereGeometry(1.8 * scale, 8, 6);
     const c2Mat = new THREE.MeshLambertMaterial({ color: 0x356b22 });
     const c2 = new THREE.Mesh(c2Geo, c2Mat);
     c2.position.y = 6.5 * scale; c2.castShadow = true; group.add(c2);
-    disposables.geometries.push(c2Geo);
-    disposables.materials.push(c2Mat);
-
+    disposables.geometries.push(c2Geo); disposables.materials.push(c2Mat);
     group.position.set(x, 0, z);
-
-    collisions.addSphere(
-      new THREE.Vector3(x, 5 * scale, z),
-      2.5 * scale,
-      { kind: 'tree' }
-    );
-
+    collisions.addSphere(new THREE.Vector3(x, 5 * scale, z), 2.5 * scale, { kind: 'tree' });
     return group;
   }
   cfg.trees.forEach(t => scene.add(makeTree(t.x, t.z, t.scale)));
 
-  // ─── Przeszkody ───
   function makeBox(x, z, w, h, d, color) {
     const geo = new THREE.BoxGeometry(w, h, d);
     const mat = new THREE.MeshLambertMaterial({ color });
@@ -387,9 +277,7 @@ window.startSimulator = function(worldKey) {
     box.position.set(x, h / 2, z);
     box.castShadow = true; box.receiveShadow = true;
     scene.add(box);
-    disposables.geometries.push(geo);
-    disposables.materials.push(mat);
-
+    disposables.geometries.push(geo); disposables.materials.push(mat);
     collisions.addBox(
       new THREE.Vector3(x - w/2, 0, z - d/2),
       new THREE.Vector3(x + w/2, h, z + d/2),
@@ -398,7 +286,6 @@ window.startSimulator = function(worldKey) {
   }
   cfg.boxes.forEach(b => makeBox(b.x, b.z, b.w, b.h, b.d, b.color));
 
-  // ─── Bramki ───
   const gateMeshes = [];
   function makeGate(x, y, z, rotY) {
     const g = new THREE.Group();
@@ -410,23 +297,16 @@ window.startSimulator = function(worldKey) {
     g.add(ring);
     g.position.set(x, y, z); g.rotation.y = rotY;
     scene.add(g);
-    disposables.geometries.push(geo);
-    disposables.materials.push(mat);
-
+    disposables.geometries.push(geo); disposables.materials.push(mat);
     g.userData.isGate = true;
     gateMeshes.push(g);
   }
   cfg.gates.forEach(g => makeGate(g.x, g.y, g.z, g.yaw));
 
-  // ─── GateTracker ───
   let gateTracker = new GateTracker(gateMeshes, {
-    droneRadius: 0.6,
-    ringRadius: 3.0,
-    ringThickness: 0.3,
-    restitution: 0.45,
-    passCooldownMs: 600,
-    passedColor: 0x00ff66,
-    resetDelayMs: 800
+    droneRadius: 0.6, ringRadius: 3.0, ringThickness: 0.3,
+    restitution: 0.45, passCooldownMs: 600,
+    passedColor: 0x00ff66, resetDelayMs: 800
   });
 
   const gateCounterEl = document.getElementById('gate-counter');
@@ -450,7 +330,6 @@ window.startSimulator = function(worldKey) {
     gateTimerEl.classList.toggle('finished', !!finished);
   };
 
-  // ─── Ghost Replay ───
   const ghostSupported = true;
   const ghostEnabled = ghostSupported && (window.__ghostEnabled !== false);
 
@@ -471,8 +350,15 @@ window.startSimulator = function(worldKey) {
       })
     : null;
 
+  // ─── Stan wyścigu ───
+  let raceGhostTimeMs = null;
+  let ghostRecordingStarted = false;
+  let hasCompletedFirstLap = false;
+
   if (ghost) {
     ghost.loadSaved();
+    ghost.startRecording(performance.now());
+    ghostRecordingStarted = true;
 
     ghost.onDeltaUpdate = (delta, isAhead) => {
       if (!ghostDeltaEl) return;
@@ -489,27 +375,19 @@ window.startSimulator = function(worldKey) {
       ghost.setGhostColor(delta > 0 ? 0x66ff99 : 0xff6666);
     };
 
-    // Intro 6 s
     ghost.onGhostIntro = ({ timeMs }) => {
       const intro = document.getElementById('ghost-intro');
       if (!intro) return;
-
-      // Tłumaczenia (i18n) — teksty wstawiane dynamicznie z kluczy
       const titleEl  = intro.querySelector('.ghost-intro-title');
       const recordEl = intro.querySelector('.ghost-intro-time-label [data-i18n="ghost.intro_record"]');
       const timeEl   = intro.querySelector('.ghost-intro-time');
-
-      if (titleEl)  titleEl.textContent  = (t && typeof t === 'function' && t('ghost.intro_title'))  || 'Twój poprzedni wynik goni Cię!';
-      if (recordEl) recordEl.textContent = (t && typeof t === 'function' && t('ghost.intro_record')) || 'Rekord:';
-
-      const timeStr = (timeMs / 1000).toFixed(3) + 's';
-      if (timeEl) timeEl.textContent = timeStr;
-
+      if (titleEl)  titleEl.textContent  = (t && t('ghost.intro_title'))  || 'Twój poprzedni wynik goni Cię!';
+      if (recordEl) recordEl.textContent = (t && t('ghost.intro_record')) || 'Rekord:';
+      if (timeEl)   timeEl.textContent   = (timeMs / 1000).toFixed(3) + 's';
       intro.classList.remove('hidden');
       intro.classList.remove('show');
       void intro.offsetWidth;
       intro.classList.add('show');
-
       clearTimeout(ghost._introHideTimer);
       ghost._introHideTimer = setTimeout(() => {
         intro.classList.remove('show');
@@ -517,69 +395,150 @@ window.startSimulator = function(worldKey) {
       }, 6000);
     };
 
-    // ─── Taranowanie ducha ───
     ghost.onGhostDestroyed = () => {
-      motorAudio.fanfare();       // dźwięk „sukces"
+      motorAudio.fanfare();
       const hud = document.getElementById('hud');
-      if (hud) {
-        hud.classList.add('collision');
-        setTimeout(() => hud.classList.remove('collision'), 300);
+      if (hud) { hud.classList.add('collision'); setTimeout(() => hud.classList.remove('collision'), 300); }
+      document.body.classList.add('screen-shake');
+      setTimeout(() => document.body.classList.remove('screen-shake'), 500);
+      const destroyedEl = document.getElementById('ghost-destroyed');
+      if (destroyedEl) {
+        const titleEl = destroyedEl.querySelector('.ghost-destroyed-title');
+        const subEl   = destroyedEl.querySelector('.ghost-destroyed-subtitle');
+        if (titleEl) titleEl.textContent = (t && t('ghost.destroyed_title')) || 'ZNISZCZYŁEŚ DUCHA!';
+        if (subEl)   subEl.textContent   = (t && t('ghost.destroyed_subtitle')) || '+100 pkt';
+        destroyedEl.classList.remove('hidden');
+        destroyedEl.classList.remove('show');
+        void destroyedEl.offsetWidth;
+        destroyedEl.classList.add('show');
+        clearTimeout(window.__ghostDestroyedTimer);
+        window.__ghostDestroyedTimer = setTimeout(() => {
+          destroyedEl.classList.remove('show');
+          setTimeout(() => destroyedEl.classList.add('hidden'), 400);
+        }, 1500);
       }
     };
 
-    ghost.onGhostRespawn = () => {
-      // Delikatny beep przy respawnie
-      motorAudio.beep(880, 0.08, 0.06);
-    };
+    ghost.onGhostRespawn = () => motorAudio.beep(880, 0.08, 0.06);
   }
-
-  let ghostRecordingStarted = false;
-  let hasCompletedFirstLap = false;
 
   function startGhostForFreshLap() {
     if (!ghost || !ghostSupported || !ghostEnabled) return;
-    if (!hasCompletedFirstLap) return;
+    if (!hasCompletedFirstLap) {
+      console.log('👻 [freshLap] pomijam — pierwsza runda');
+      return;
+    }
+    if (raceGhostTimeMs !== null) {
+      console.log('👻 [freshLap] pomijam — wyścig już trwa');
+      return;
+    }
+
+    // 🔧 RESET: wszystkie bramki na czerwono, finished = false
+    // Dzięki temu gracz zaczyna pełne okrążenie od nowa (wszystkie bramki do zapalenia)
+    for (const g of gateTracker.gates) {
+      g.passed = false;
+      g.prevSide = null;
+      g.prevRadialDist = null;
+      g.cooldownUntil = 0;
+      g.resetColor();
+    }
+    gateTracker.finished = false;
+    gateTracker.finishTime = null;
 
     const ghostNow = performance.now();
-    ghostRecordingStarted = true;
-    ghost.startRecording(ghostNow);
-
     gateTracker.startTime = ghostNow;
 
     if (ghost.hasRecord()) {
+      const record = ghost.loadSaved();
+      raceGhostTimeMs = record ? record.timeMs : null;
       ghost.restartPlayback(ghostNow);
+      console.log('👻 [freshLap] wyścig startuje — rekord ghosta:', Math.round(raceGhostTimeMs) + 'ms');
     } else {
-      console.log('👻 [ghost] brak rekordu — nagrywam kolejny przejazd');
+      raceGhostTimeMs = null;
+      console.log('👻 [freshLap] brak rekordu — nagrywam kolejny przejazd');
     }
   }
-
-  gateTracker.onGatePassed = (gate, idx) => {
-    motorAudio.success();
-  };
-
-  gateTracker.onGateHit = () => { motorAudio.thud(); };
-
-  gateTracker.onGateReset = (gate, idx) => {
-    motorAudio.beep(330, 0.08, 0.06);
-  };
-
-  gateTracker.onFreshLapStart = (gate, idx) => {
-    if (idx !== 0) return;
-    startGhostForFreshLap();
-  };
+  gateTracker.onGatePassed = () => motorAudio.success();
+  gateTracker.onGateHit = () => motorAudio.thud();
+  gateTracker.onGateReset = () => motorAudio.beep(330, 0.08, 0.06);
+  gateTracker.onFreshLapStart = (gate, idx) => { if (idx === 0) startGhostForFreshLap(); };
 
   gateTracker.onFinish = () => {
     motorAudio.fanfare();
     hasCompletedFirstLap = true;
+
     if (ghost) {
-      const time = performance.now() - gateTracker.startTime;
-      ghost.onLapComplete(time);
+      const playerTime = performance.now() - gateTracker.startTime;
+
+      console.log('🏁 [finish]', {
+        playerTime: Math.round(playerTime) + 'ms',
+        raceGhostTime: raceGhostTimeMs != null ? Math.round(raceGhostTimeMs) + 'ms' : 'brak (nie było wyścigu)',
+      });
+
+      ghost.onLapComplete(playerTime);
+
+      const resultEl = document.getElementById('ghost-result');
+      if (resultEl) {
+        const iconEl  = document.getElementById('ghost-result-icon');
+        const titleEl = document.getElementById('ghost-result-title');
+        const subEl   = document.getElementById('ghost-result-subtitle');
+        const pTimeEl = resultEl.querySelector('.ghost-result-player-time');
+        const gTimeEl = resultEl.querySelector('.ghost-result-ghost-time');
+        const vsEl    = resultEl.querySelector('.ghost-result-vs');
+        const labelEl = resultEl.querySelector('.ghost-result-time-label');
+
+        resultEl.classList.remove('win', 'lose', 'neutral');
+
+        if (raceGhostTimeMs != null && raceGhostTimeMs > 0) {
+          const won = playerTime < raceGhostTimeMs;
+          if (iconEl)  iconEl.textContent  = won ? '🏆' : '🍌';
+          if (titleEl) titleEl.textContent = won
+            ? ((t && t('ghost.win_title'))  || 'WYGRAŁEŚ!')
+            : ((t && t('ghost.lose_title')) || 'PRZEGRAŁEŚ');
+          if (subEl)   subEl.textContent   = won
+            ? ((t && t('ghost.win_subtitle'))  || 'Pobiłeś rekord ducha')
+            : ((t && t('ghost.lose_subtitle')) || 'Duch był szybszy');
+          if (pTimeEl) pTimeEl.textContent = (playerTime / 1000).toFixed(3) + 's';
+          if (gTimeEl) { gTimeEl.textContent = (raceGhostTimeMs / 1000).toFixed(3) + 's'; gTimeEl.style.display = ''; }
+          if (vsEl)    vsEl.style.display = '';
+          if (labelEl) labelEl.textContent = (t && t('ghost.your_time')) || 'Twój czas:';
+          resultEl.classList.add(won ? 'win' : 'lose');
+          console.log(won ? '🏆 [result] WYGRAŁEŚ!' : '🍌 [result] PRZEGRAŁEŚ');
+        } else {
+          if (iconEl)  iconEl.textContent  = '🏁';
+          if (titleEl) titleEl.textContent = (t && t('ghost.first_title')) || 'GRATULACJE!';
+          if (subEl)   subEl.textContent   = (t && t('ghost.first_subtitle')) || 'Zaliczyłeś tor';
+          if (pTimeEl) pTimeEl.textContent = (playerTime / 1000).toFixed(3) + 's';
+          if (gTimeEl) gTimeEl.style.display = 'none';
+          if (vsEl)    vsEl.style.display = 'none';
+          if (labelEl) labelEl.textContent = (t && t('ghost.your_time')) || 'Twój czas:';
+          resultEl.classList.add('neutral');
+          console.log('🏁 [result] Gratulacje (brak wyścigu)');
+        }
+
+        resultEl.classList.remove('hidden');
+        resultEl.classList.remove('show');
+        void resultEl.offsetWidth;
+        resultEl.classList.add('show');
+
+        clearTimeout(window.__ghostResultTimer);
+        window.__ghostResultTimer = setTimeout(() => {
+          resultEl.classList.remove('show');
+          setTimeout(() => resultEl.classList.add('hidden'), 400);
+        }, 5000);
+      }
+
+      // Zrestartuj nagrywanie na nowe okrążenie
+      ghostRecordingStarted = true;
+      ghost.startRecording(performance.now());
     }
+
+    // Reset stanu wyścigu (next round ustawi to przez freshLap)
+    raceGhostTimeMs = null;
   };
 
   gateTracker._emitProgress();
 
-  // ─── DRON ───
   const drone = {
     pos: new THREE.Vector3(cfg.spawn.x, cfg.spawn.y, cfg.spawn.z),
     vel: new THREE.Vector3(0, 0, 0),
@@ -589,24 +548,15 @@ window.startSimulator = function(worldKey) {
   };
 
   const PHYS = {
-    mode: cfg.physics.mode,
-    gravity: cfg.physics.gravity,
-    thrustFactor: cfg.physics.thrustFactor,
-    pitchRollGain: cfg.physics.pitchRollGain,
-    yawRateArcade: cfg.physics.yawRate,
-    visualTilt: cfg.physics.visualTilt,
-    drag: cfg.physics.drag,
-    throttleHover: cfg.physics.throttleHover,
-    hoverThrottle: cfg.physics.hoverThrottle,
-    pitchRollRate: cfg.physics.pitchRollRate,
-    yawRateReal: cfg.physics.yawRate,
-    angularInertia: cfg.physics.angularInertia,
-    angularDamping: cfg.physics.angularDamping,
-    airDrag: cfg.physics.airDrag,
-    airDragQuadratic: cfg.physics.airDragQuadratic,
-    maxTiltAngle: cfg.physics.maxTiltAngle,
-    maxAltitude: cfg.physics.maxAltitude,
-    maxSpeed: cfg.physics.maxSpeed,
+    mode: cfg.physics.mode, gravity: cfg.physics.gravity,
+    thrustFactor: cfg.physics.thrustFactor, pitchRollGain: cfg.physics.pitchRollGain,
+    yawRateArcade: cfg.physics.yawRate, visualTilt: cfg.physics.visualTilt,
+    drag: cfg.physics.drag, throttleHover: cfg.physics.throttleHover,
+    hoverThrottle: cfg.physics.hoverThrottle, pitchRollRate: cfg.physics.pitchRollRate,
+    yawRateReal: cfg.physics.yawRate, angularInertia: cfg.physics.angularInertia,
+    angularDamping: cfg.physics.angularDamping, airDrag: cfg.physics.airDrag,
+    airDragQuadratic: cfg.physics.airDragQuadratic, maxTiltAngle: cfg.physics.maxTiltAngle,
+    maxAltitude: cfg.physics.maxAltitude, maxSpeed: cfg.physics.maxSpeed,
     groundLevel: cfg.physics.groundLevel
   };
 
@@ -621,24 +571,14 @@ window.startSimulator = function(worldKey) {
 
   let cameraAngleDeg = cfg.camera.angle || 0;
   let cameraAngleRad = cameraAngleDeg * Math.PI / 180;
-
   const cameraAnglesList = cfg.camera.angles || [0, 20, 35];
   let cameraAngleIndex = cameraAnglesList.indexOf(cameraAngleDeg);
   if (cameraAngleIndex < 0) cameraAngleIndex = 0;
-
   const camEl = document.getElementById('camAngle');
   if (camEl) camEl.textContent = cameraAngleDeg + '°';
 
-  window.onCameraAngleChange = (angleDeg) => {
-    cameraAngleDeg = angleDeg;
-    cameraAngleRad = angleDeg * Math.PI / 180;
-  };
-
-  window.setCameraAngle = (angleDeg) => {
-    cameraAngleDeg = angleDeg;
-    cameraAngleRad = angleDeg * Math.PI / 180;
-  };
-
+  window.onCameraAngleChange = (a) => { cameraAngleDeg = a; cameraAngleRad = a * Math.PI / 180; };
+  window.setCameraAngle = (a) => { cameraAngleDeg = a; cameraAngleRad = a * Math.PI / 180; };
   window.cycleCameraAngle = function() {
     cameraAngleIndex = (cameraAngleIndex + 1) % cameraAnglesList.length;
     const angle = cameraAnglesList[cameraAngleIndex];
@@ -646,21 +586,14 @@ window.startSimulator = function(worldKey) {
     cameraAngleRad = angle * Math.PI / 180;
     const camElLocal = document.getElementById('camAngle');
     if (camElLocal) camElLocal.textContent = angle + '°';
-    console.log(`📷 Kąt kamery (${worldKey}): ${angle}°`);
   };
 
   window.padData.onDisconnect = () => { pausedByDisconnect = true; };
-  window.padData.onReconnect  = () => {
-    pausedByDisconnect = false;
-    prevTime = performance.now();
-  };
+  window.padData.onReconnect  = () => { pausedByDisconnect = false; prevTime = performance.now(); };
 
   function triggerCollisionFlash() {
     const hud = document.getElementById('hud');
-    if (hud) {
-      hud.classList.add('collision');
-      setTimeout(() => hud.classList.remove('collision'), 300);
-    }
+    if (hud) { hud.classList.add('collision'); setTimeout(() => hud.classList.remove('collision'), 300); }
   }
 
   const onKeyDown = (e) => {
@@ -689,135 +622,87 @@ window.startSimulator = function(worldKey) {
       if (gateTracker) {
         gateTracker.restart();
         motorAudio.beep(440, 0.15, 0.10);
-
-        if (ghost) {
-          ghostRecordingStarted = false;
-          ghost.stopRecording();
-          ghost.stopPlayback();
-        }
-
+        if (ghost) { ghost.stopPlayback(); ghost.startRecording(performance.now()); ghostRecordingStarted = true; }
+        raceGhostTimeMs = null;
         const intro = document.getElementById('ghost-intro');
-        if (intro) {
-          intro.classList.remove('show');
-          intro.classList.add('hidden');
-        }
-
+        if (intro) { intro.classList.remove('show'); intro.classList.add('hidden'); }
+        const resultEl = document.getElementById('ghost-result');
+        if (resultEl) { resultEl.classList.remove('show'); resultEl.classList.add('hidden'); }
+        const destroyedEl = document.getElementById('ghost-destroyed');
+        if (destroyedEl) { destroyedEl.classList.remove('show'); destroyedEl.classList.add('hidden'); }
+        document.body.classList.remove('screen-shake');
         console.log('🔄 Restart okrążenia');
       }
       return;
     }
-    if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') {
-      e.preventDefault();
-      audioState.masterMute = !audioState.masterMute;
-      applyAudioState();
-      return;
-    }
-    if (e.code === 'KeyN' || e.key === 'n' || e.key === 'N') {
-      e.preventDefault();
-      audioState.engineMuted = !audioState.engineMuted;
-      localStorage.setItem('betafpv_engine_mute', String(audioState.engineMuted));
-      applyAudioState();
-      return;
-    }
-    if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
-      e.preventDefault();
-      audioState.musicMuted = !audioState.musicMuted;
-      localStorage.setItem('betafpv_music_mute', String(audioState.musicMuted));
-      applyAudioState();
-      return;
-    }
+    if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') { e.preventDefault(); audioState.masterMute = !audioState.masterMute; applyAudioState(); return; }
+    if (e.code === 'KeyN' || e.key === 'n' || e.key === 'N') { e.preventDefault(); audioState.engineMuted = !audioState.engineMuted; localStorage.setItem('betafpv_engine_mute', String(audioState.engineMuted)); applyAudioState(); return; }
+    if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') { e.preventDefault(); audioState.musicMuted = !audioState.musicMuted; localStorage.setItem('betafpv_music_mute', String(audioState.musicMuted)); applyAudioState(); return; }
   };
 
   addEventListener('keydown', onKeyDown);
 
-  // ================================================================
-  // FIZYKA — ARCADE
-  // ================================================================
   function stepPhysicsArcade(dt, inp) {
     const throttle01 = (inp.throttle + 1) / 2;
     const thrust = throttle01 * PHYS.thrustFactor;
-
     drone.vel.y += PHYS.gravity * dt;
     drone.vel.y += thrust * Math.cos(drone.pitch) * Math.cos(drone.roll) * dt;
-
     const gain = PHYS.pitchRollGain * thrust;
     drone.vel.x += Math.sin(drone.yaw) * (-inp.pitch) * gain * dt;
     drone.vel.z += Math.cos(drone.yaw) * (-inp.pitch) * gain * dt;
     drone.vel.x += Math.cos(drone.yaw) * inp.roll * gain * dt;
     drone.vel.z += -Math.sin(drone.yaw) * inp.roll * gain * dt;
-
     drone.vel.multiplyScalar(PHYS.drag);
     drone.yaw += inp.yaw * PHYS.yawRateArcade * dt;
     drone.pitch = -inp.pitch * PHYS.visualTilt;
     drone.roll  =  inp.roll  * PHYS.visualTilt;
   }
 
-  // ================================================================
-  // FIZYKA — REALISTIC
-  // ================================================================
   function stepPhysicsRealistic(dt, inp) {
     drone.targetPitch = -inp.pitch * PHYS.maxTiltAngle;
     drone.targetRoll  =  inp.roll  * PHYS.maxTiltAngle;
-
     const targetYawRate = inp.yaw * PHYS.yawRateReal;
     drone.yawRate += (targetYawRate - drone.yawRate) * PHYS.angularDamping * dt;
     drone.yaw += drone.yawRate * dt;
-
     if (PHYS.angularInertia >= 0.999) {
       drone.pitch = drone.targetPitch;
       drone.roll  = drone.targetRoll;
     } else {
       const pitchError = drone.targetPitch - drone.pitch;
       const rollError  = drone.targetRoll  - drone.roll;
-
       drone.pitchRate += pitchError * PHYS.pitchRollRate * 8 * dt;
       drone.rollRate  += rollError  * PHYS.pitchRollRate * 8 * dt;
-
       const damping = PHYS.angularDamping * dt;
       drone.pitchRate *= Math.max(0, 1 - damping);
       drone.rollRate  *= Math.max(0, 1 - damping);
-
       drone.pitch += drone.pitchRate * dt;
       drone.roll  += drone.rollRate  * dt;
     }
-
     const throttle01 = (inp.throttle + 1) / 2;
     const hoverRatio = throttle01 / PHYS.hoverThrottle;
     const clampedHoverRatio = Math.max(0, Math.min(2.0, hoverRatio));
     const thrust = clampedHoverRatio * (-PHYS.gravity);
-
     const cy = Math.cos(drone.yaw),  sy = Math.sin(drone.yaw);
     const cp = Math.cos(drone.pitch), sp = Math.sin(drone.pitch);
     const cr = Math.cos(drone.roll),  sr = Math.sin(drone.roll);
-
     const upX = sy * sp * cr + cy * sr;
     const upY = cp * cr;
     const upZ = cy * sp * cr - sy * sr;
-
     drone.vel.x += upX * thrust * dt;
     drone.vel.y += upY * thrust * dt;
     drone.vel.z += upZ * thrust * dt;
-
     drone.vel.y += PHYS.gravity * dt;
-
     const speed = drone.vel.length();
     if (speed > 0.001) {
-      const dragLinear = PHYS.airDrag * speed;
-      const dragQuadratic = PHYS.airDragQuadratic * speed * speed;
-      const totalDrag = dragLinear + dragQuadratic;
-
+      const totalDrag = PHYS.airDrag * speed + PHYS.airDragQuadratic * speed * speed;
       drone.vel.x -= (drone.vel.x / speed) * totalDrag * dt;
       drone.vel.y -= (drone.vel.y / speed) * totalDrag * dt;
       drone.vel.z -= (drone.vel.z / speed) * totalDrag * dt;
     }
   }
 
-  // ================================================================
-  // GŁÓWNA PĘTLA
-  // ================================================================
   function animate() {
     rafId = requestAnimationFrame(animate);
-
     const now = performance.now();
     const dt = Math.min((now - prevTime) / 1000, 0.033);
     prevTime = now;
@@ -831,7 +716,6 @@ window.startSimulator = function(worldKey) {
     }
 
     const rawInp = window.padData.input;
-
     const dzInp = {
       throttle: rawInp.throttle,
       yaw:      rawInp.yaw,
@@ -844,20 +728,15 @@ window.startSimulator = function(worldKey) {
     smoothedInput.yaw      = a * smoothedInput.yaw      + (1 - a) * dzInp.yaw;
     smoothedInput.roll     = a * smoothedInput.roll     + (1 - a) * dzInp.roll;
     smoothedInput.pitch    = a * smoothedInput.pitch    + (1 - a) * dzInp.pitch;
-
     const inp = smoothedInput;
 
-    if (PHYS.mode === 'realistic') {
-      stepPhysicsRealistic(dt, inp);
-    } else {
-      stepPhysicsArcade(dt, inp);
-    }
+    if (PHYS.mode === 'realistic') stepPhysicsRealistic(dt, inp);
+    else stepPhysicsArcade(dt, inp);
 
     drone.pos.addScaledVector(drone.vel, dt);
 
     const collisionsEnabled = (worldKey === 'expert' || worldKey === 'expert_race')
-      ? true
-      : (window.__collisionsEnabled !== false);
+      ? true : (window.__collisionsEnabled !== false);
 
     if (collisionsEnabled) {
       const collision = collisions.check(drone.pos, 0.5);
@@ -882,42 +761,32 @@ window.startSimulator = function(worldKey) {
     const horizontalSpeed = Math.sqrt(drone.vel.x * drone.vel.x + drone.vel.z * drone.vel.z);
     if (horizontalSpeed > PHYS.maxSpeed) {
       const scale = PHYS.maxSpeed / horizontalSpeed;
-      drone.vel.x *= scale;
-      drone.vel.z *= scale;
+      drone.vel.x *= scale; drone.vel.z *= scale;
     }
-
     if (drone.pos.y < PHYS.groundLevel) {
       drone.pos.y = PHYS.groundLevel;
       if (drone.vel.y < 0) drone.vel.y = 0;
       drone.vel.x *= 0.85; drone.vel.z *= 0.85;
     }
-
     if (drone.pos.y > PHYS.maxAltitude) {
       drone.pos.y = PHYS.maxAltitude;
       if (drone.vel.y > 0) drone.vel.y = 0;
     }
 
-    // ─── Ghost replay ───
     if (ghost) {
       const currentLapTime = gateTracker ? (now - gateTracker.startTime) : 0;
-
       if (ghostRecordingStarted) {
-        ghost.record(drone.pos, {
-          yaw: drone.yaw, pitch: drone.pitch, roll: drone.roll
-        }, now);
+        ghost.record(drone.pos, { yaw: drone.yaw, pitch: drone.pitch, roll: drone.roll }, now);
       }
-
       ghost.update(now, currentLapTime, drone.pos);
     }
 
-    // ─── Kamera ───
     if (!cameraSmooth.initialized) {
       cameraSmooth.pitch = drone.pitch;
       cameraSmooth.roll  = drone.roll;
       cameraSmooth.yaw   = drone.yaw;
       cameraSmooth.initialized = true;
     }
-
     const cs = CAMERA_SMOOTHING;
     cameraSmooth.pitch = cs * cameraSmooth.pitch + (1 - cs) * drone.pitch;
     cameraSmooth.roll  = cs * cameraSmooth.roll  + (1 - cs) * drone.roll;
@@ -929,23 +798,14 @@ window.startSimulator = function(worldKey) {
     camera.rotation.x = cameraSmooth.pitch + cameraAngleRad;
     camera.rotation.z = cameraSmooth.roll;
 
-    // ─── HUD ───
-    const hudThr = document.getElementById('thr');
-    if (hudThr) hudThr.textContent = inp.throttle.toFixed(2);
-    const hudYaw = document.getElementById('yaw');
-    if (hudYaw) hudYaw.textContent = inp.yaw.toFixed(2);
-    const hudRol = document.getElementById('rol');
-    if (hudRol) hudRol.textContent = inp.roll.toFixed(2);
-    const hudPit = document.getElementById('pit');
-    if (hudPit) hudPit.textContent = inp.pitch.toFixed(2);
-    const hudAlt = document.getElementById('alt');
-    if (hudAlt) hudAlt.textContent = drone.pos.y.toFixed(1);
-    const hudSpd = document.getElementById('spd');
-    if (hudSpd) hudSpd.textContent = drone.vel.length().toFixed(1);
+    const hudThr = document.getElementById('thr'); if (hudThr) hudThr.textContent = inp.throttle.toFixed(2);
+    const hudYaw = document.getElementById('yaw'); if (hudYaw) hudYaw.textContent = inp.yaw.toFixed(2);
+    const hudRol = document.getElementById('rol'); if (hudRol) hudRol.textContent = inp.roll.toFixed(2);
+    const hudPit = document.getElementById('pit'); if (hudPit) hudPit.textContent = inp.pitch.toFixed(2);
+    const hudAlt = document.getElementById('alt'); if (hudAlt) hudAlt.textContent = drone.pos.y.toFixed(1);
+    const hudSpd = document.getElementById('spd'); if (hudSpd) hudSpd.textContent = drone.vel.length().toFixed(1);
 
-    const throttle01ForAudio = (inp.throttle + 1) / 2;
-    motorAudio.update(throttle01ForAudio, true, false);
-
+    motorAudio.update((inp.throttle + 1) / 2, true, false);
     renderer.render(scene, camera);
   }
 
@@ -957,15 +817,8 @@ window.startSimulator = function(worldKey) {
   addEventListener('resize', onResize);
 
   simState = {
-    renderer,
-    scene,
-    camera,
-    disposables,
-    onResize,
-    onKeyDown,
-    collisions,
-    gateTracker,
-    ghost,
+    renderer, scene, camera, disposables, onResize, onKeyDown,
+    collisions, gateTracker, ghost,
     getRafId: () => rafId
   };
 
@@ -973,66 +826,45 @@ window.startSimulator = function(worldKey) {
 };
 
 // ================================================================
-// ZATRZYMANIE SYMULATORA
+// ZATRZYMANIE
 // ================================================================
 window.stopSimulator = function() {
   if (!simState) return;
-
   console.log('🛑 Zatrzymuję symulator...');
-
   const rafId = simState.getRafId();
   if (rafId !== null) cancelAnimationFrame(rafId);
-
   removeEventListener('resize', simState.onResize);
   if (simState.onKeyDown) removeEventListener('keydown', simState.onKeyDown);
 
-  const ch = document.getElementById('crosshair');
-  if (ch) ch.classList.add('hidden');
-  const pi = document.getElementById('pauseIndicator');
-  if (pi) pi.classList.add('hidden');
-
+  const ch = document.getElementById('crosshair'); if (ch) ch.classList.add('hidden');
+  const pi = document.getElementById('pauseIndicator'); if (pi) pi.classList.add('hidden');
   const intro = document.getElementById('ghost-intro');
-  if (intro) {
-    intro.classList.remove('show');
-    intro.classList.add('hidden');
-  }
+  if (intro) { intro.classList.remove('show'); intro.classList.add('hidden'); }
+  const resultEl = document.getElementById('ghost-result');
+  if (resultEl) { resultEl.classList.remove('show'); resultEl.classList.add('hidden'); }
+  const destroyedEl = document.getElementById('ghost-destroyed');
+  if (destroyedEl) { destroyedEl.classList.remove('show'); destroyedEl.classList.add('hidden'); }
+  document.body.classList.remove('screen-shake');
 
-  if (simState.ghost) {
-    simState.ghost.dispose();
-    simState.ghost = null;
-  }
-
+  if (simState.ghost) { simState.ghost.dispose(); simState.ghost = null; }
   if (simState.gateTracker) {
     simState.gateTracker.gates.forEach(g => g.resetColor && g.resetColor());
-    simState.gateTracker.dispose();
-    simState.gateTracker = null;
+    simState.gateTracker.dispose(); simState.gateTracker = null;
   }
-
-  if (simState.renderer && simState.renderer.domElement) {
-    simState.renderer.domElement.remove();
-  }
-
+  if (simState.renderer && simState.renderer.domElement) simState.renderer.domElement.remove();
   simState.disposables.geometries.forEach(g => g.dispose());
   simState.disposables.materials.forEach(m => m.dispose());
   simState.disposables.textures.forEach(t => t.dispose());
-
   if (simState.collisions) simState.collisions.clear();
-
   simState.scene.clear();
   if (simState.renderer) simState.renderer.dispose();
-
   simState = null;
 
-  smoothedInput.throttle = 0;
-  smoothedInput.yaw = 0;
-  smoothedInput.roll = 0;
-  smoothedInput.pitch = 0;
+  smoothedInput.throttle = 0; smoothedInput.yaw = 0;
+  smoothedInput.roll = 0; smoothedInput.pitch = 0;
   cameraSmooth.initialized = false;
 
-  window.onCameraAngleChange = null;
-  window.setCameraAngle = null;
-  window.cycleCameraAngle = null;
-
+  window.onCameraAngleChange = null; window.setCameraAngle = null; window.cycleCameraAngle = null;
   window.padData.onDisconnect = () => {
     const banner = document.getElementById('reconnectBanner');
     if (banner) banner.classList.add('show');
@@ -1045,6 +877,5 @@ window.stopSimulator = function() {
     const statusEl = document.getElementById('status');
     if (statusEl) statusEl.textContent = t('hud.ok');
   };
-
   console.log('✅ Symulator zatrzymany');
 };

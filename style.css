@@ -461,3 +461,207 @@ body {
   font-weight: 700;
   text-shadow: 0 0 8px rgba(102, 255, 153, 0.6);
 }
+
+/* ─── Ghost result: wygrana/przegrana ─── */
+#ghost-result {
+  position: fixed;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9001;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+#ghost-result.hidden { display: none; }
+
+#ghost-result.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.ghost-result-card {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 22px 40px;
+  background: rgba(10, 20, 40, 0.9);
+  border: 2px solid #66ccff;
+  border-radius: 14px;
+  box-shadow: 0 0 30px rgba(102, 204, 255, 0.55),
+              0 0 60px rgba(102, 204, 255, 0.25);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: ghost-result-pop 0.45s ease-out;
+}
+#ghost-result.win  .ghost-result-card {
+  border-color: #66ff99;
+  box-shadow: 0 0 30px rgba(102, 255, 153, 0.65),
+              0 0 60px rgba(102, 255, 153, 0.3);
+}
+#ghost-result.lose .ghost-result-card {
+  border-color: #ff6666;
+  box-shadow: 0 0 30px rgba(255, 102, 102, 0.6),
+              0 0 60px rgba(255, 102, 102, 0.25);
+}
+
+@keyframes ghost-result-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.ghost-result-icon {
+  font-size: 60px;
+  line-height: 1;
+  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.6));
+  animation: ghost-result-float 2.5s ease-in-out infinite;
+}
+#ghost-result.win  .ghost-result-icon { filter: drop-shadow(0 0 16px rgba(255, 215, 0, 0.9)); }
+#ghost-result.lose .ghost-result-icon { filter: drop-shadow(0 0 14px rgba(255, 200, 50, 0.7)); }
+
+@keyframes ghost-result-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-6px) rotate(-4deg); }
+}
+
+.ghost-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ghost-result-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.5);
+}
+#ghost-result.win  .ghost-result-title { color: #a8ffcc; text-shadow: 0 0 16px rgba(102, 255, 153, 0.9); }
+#ghost-result.lose .ghost-result-title { color: #ffbbbb; text-shadow: 0 0 16px rgba(255, 102, 102, 0.9); }
+
+.ghost-result-subtitle {
+  font-size: 14px;
+  color: #c8d8e8;
+  letter-spacing: 0.3px;
+}
+
+.ghost-result-times {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  color: #a8c8e0;
+}
+.ghost-result-player-time { color: #66ff99; font-weight: 700; }
+.ghost-result-ghost-time  { color: #ff9999; font-weight: 700; }
+.ghost-result-vs          { color: #7a9ab8; font-size: 11px; letter-spacing: 1px; }
+
+/* ─── Ghost destroyed: płomienie + tekst ─── */
+#ghost-destroyed {
+  position: fixed;
+  inset: 0;
+  z-index: 9002;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+#ghost-destroyed.hidden { display: none; }
+#ghost-destroyed.show   { opacity: 1; }
+
+.ghost-destroyed-flames {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  justify-content: center;
+  font-size: 64px;
+  line-height: 1;
+}
+
+.flame {
+  animation: flame-dance 0.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(255, 120, 0, 0.9));
+  transform-origin: bottom center;
+}
+.flame:nth-child(1) { animation-delay: 0s;    font-size: 48px; }
+.flame:nth-child(2) { animation-delay: 0.08s; font-size: 64px; }
+.flame:nth-child(3) { animation-delay: 0.16s; font-size: 56px; }
+.flame:nth-child(4) { animation-delay: 0.24s; font-size: 72px; }
+.flame:nth-child(5) { animation-delay: 0.32s; font-size: 56px; }
+.flame:nth-child(6) { animation-delay: 0.40s; font-size: 64px; }
+.flame:nth-child(7) { animation-delay: 0.48s; font-size: 48px; }
+
+@keyframes flame-dance {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50%      { transform: scale(1.15) translateY(-8px); }
+}
+
+.ghost-destroyed-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.ghost-destroyed-title {
+  font-size: 38px;
+  font-weight: 900;
+  color: #ffdd88;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(255, 120, 0, 1),
+               0 0 40px rgba(255, 60, 0, 0.8),
+               0 0 60px rgba(255, 0, 0, 0.5);
+  animation: destroyed-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes destroyed-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+
+.ghost-destroyed-subtitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #66ff99;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  text-shadow: 0 0 12px rgba(102, 255, 153, 0.9);
+}
+
+/* ─── Screen shake po zniszczeniu ghosta ─── */
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  10%      { transform: translate(-6px, -4px); }
+  20%      { transform: translate(5px, 3px); }
+  30%      { transform: translate(-4px, 5px); }
+  40%      { transform: translate(4px, -5px); }
+  50%      { transform: translate(-3px, 2px); }
+  60%      { transform: translate(3px, -3px); }
+  70%      { transform: translate(-2px, 4px); }
+  80%      { transform: translate(2px, -2px); }
+  90%      { transform: translate(-1px, 1px); }
+}
+body.screen-shake {
+  animation: screen-shake 0.5s ease-in-out;
+}
+
+
+/* ─── Ghost result: neutralny (pierwszy przejazd) ─── */
+#ghost-result.neutral .ghost-result-card {
+  border-color: #66ccff;
+  box-shadow: 0 0 30px rgba(102, 204, 255, 0.6),
+              0 0 60px rgba(102, 204, 255, 0.28);
+}
+#ghost-result.neutral .ghost-result-title {
+  color: #a8e0ff;
+  text-shadow: 0 0 16px rgba(102, 204, 255, 0.9);
+}
+#ghost-result.neutral .ghost-result-icon {
+  filter: drop-shadow(0 0 14px rgba(102, 204, 255, 0.9));
+}

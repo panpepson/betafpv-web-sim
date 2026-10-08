@@ -104,6 +104,16 @@
   },
   "ghost": {
     "intro_title": "Twój poprzedni wynik goni Cię!",
-    "intro_record": "Rekord:"
+    "intro_record": "Rekord:",
+    "win_title": "WYGRAŁEŚ!",
+    "win_subtitle": "Pobiłeś rekord ducha",
+    "lose_title": "PRZEGRAŁEŚ",
+    "lose_subtitle": "Duch był szybszy",
+    "destroyed_title": "ZNISZCZYŁEŚ DUCHA!",
+    "destroyed_subtitle": "+100 pkt",
+    "first_title": "GRATULACJE!",
+    "first_subtitle": "Zaliczyłeś tor",
+    "your_time": "Twój czas:",
+    "first_time_hint": "Kolejny lot — ścigaj ducha!"
   }
 }

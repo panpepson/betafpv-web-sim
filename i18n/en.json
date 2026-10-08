@@ -102,8 +102,18 @@
     "collisions": "💥 Collisions",
     "ghost": "👻 Ghost replay"
   },
-  "ghost": {
+ "ghost": {
     "intro_title": "Your previous best is chasing you!",
-    "intro_record": "Record:"
+    "intro_record": "Record:",
+    "win_title": "YOU WIN!",
+    "win_subtitle": "You beat the ghost's record",
+    "lose_title": "YOU LOSE",
+    "lose_subtitle": "The ghost was faster",
+    "destroyed_title": "GHOST DESTROYED!",
+    "destroyed_subtitle": "+100 pts",
+    "first_title": "CONGRATULATIONS!",
+    "first_subtitle": "You completed the track",
+    "your_time": "Your time:",
+    "first_time_hint": "Next flight — chase the ghost!"
   }
 }

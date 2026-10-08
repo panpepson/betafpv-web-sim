@@ -2,13 +2,12 @@
 // F1 — Licznik bramek + detekcja przejścia/kolizji z obręczą
 // + zmiana koloru po zaliczeniu (czerwony → zielony)
 // + PO UKOŃCZENIU: przelot przez zieloną bramkę resetuje TYLKO ją (wraca na czerwony)
-// + hook na dźwięk sukcesu (realizowany przez MotorAudio w main.js)
 //
-// v2:
-//   - resetDelayMs domyślnie 800 ms (krótszy cooldown po finiszu)
-//   - onGateReset wywoływane z (gate, idx) — potrzebne do startu ghosta
-//   - osobny callback onFreshLapStart — wywoływane gdy gracz zaczyna NOWE okrążenie
-//     (przejście przez bramkę #1 w trybie normalnym LUB „gaszenie" zielonej bramki #1)
+// v4:
+//   - onFreshLapStart odpala się przy przejściu przez bramkę #1
+//     (zarówno normalnym, jak i przy „gaszeniu")
+//   - Blokada przed powtórzeniem przeniesiona do main.js (raceGhostTimeMs)
+//   - resetDelayMs domyślnie 800 ms
 
 import * as THREE from 'three';
 
@@ -68,7 +67,6 @@ class Gate {
     this._emissiveIntensity = 0;
   }
 
-  /** Reset tylko tej bramki (stan + kolor) — dla pojedynczego "zgaszenia" */
   resetOne() {
     this.passed = false;
     this.prevSide = null;
@@ -100,31 +98,23 @@ export class GateTracker {
     this.passCooldownMs = opts.passCooldownMs ?? 600;
     this.passedColor = opts.passedColor ?? 0x00ff66;
 
-    /** @type {(gate:Gate, idx:number)=>void} */
     this.onGatePassed = null;
-    /** @type {(gate:Gate, hit:object)=>void} */
     this.onGateHit = null;
-    /** @type {(p:object)=>void} */
     this.onProgress = null;
-    /** @type {()=>void} */
     this.onFinish = null;
-    /** @type {(gate:Gate, idx:number)=>void} — reset pojedynczej bramki po ukończeniu */
     this.onGateReset = null;
-    /** @type {(gate:Gate, idx:number)=>void} — start nowego okrążenia (bramka #1: normalny przelot LUB „gaszenie") */
     this.onFreshLapStart = null;
 
     this.startTime = performance.now();
     this.finished = false;
     this.finishTime = null;
 
-    // Po ukończeniu: pozwalamy na reset pojedynczych bramek po tym czasie (ms)
     this.resetDelayMs = opts.resetDelayMs ?? 800;
 
     this._tmpA = new THREE.Vector3();
     this._tmpB = new THREE.Vector3();
   }
 
-  /** Pełny reset — wszystkie bramki na czerwono (do zmiany świata) */
   reset() {
     for (const g of this.gates) {
       g.passed = false;
@@ -139,7 +129,6 @@ export class GateTracker {
     this._emitProgress();
   }
 
-  /** Alias dla reset — restart całego okrążenia (klawisz R) */
   restart() {
     this.reset();
   }
@@ -209,7 +198,7 @@ export class GateTracker {
             gate.markPassed(this.passedColor);
             gate.cooldownUntil = now + this.passCooldownMs;
 
-            // NOWE: sygnał startu świeżego okrążenia (przejście przez bramkę #1 z czerwonej)
+            // 🔧 Sygnał startu nowego okrążenia (bramka #1, nie w trakcie finiszu)
             if (idx === 0 && !this.finished) {
               if (this.onFreshLapStart) this.onFreshLapStart(gate, idx);
             }
@@ -231,13 +220,12 @@ export class GateTracker {
             const wasFirstGate = (idx === 0);
             gate.resetOne();
 
-            // NOWE: „gaszenie" bramki #1 = gracz zaczyna NOWE okrążenie
+            // 🔧 „Gaszenie" bramki #1 = start nowego okrążenia
             if (wasFirstGate) {
               if (this.onFreshLapStart) this.onFreshLapStart(gate, idx);
             }
 
             if (this.onGateReset) this.onGateReset(gate, idx);
-            // Nie zmieniamy this.finished — user "gasi" bramki jedna po drugiej
             this._emitProgress();
           }
         }

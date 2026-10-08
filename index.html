@@ -79,6 +79,45 @@
     </div>
   </div>
 </div>
+
+
+<!-- ─── Wynik wyścigu: wygrana/przegrana ─── -->
+<div id="ghost-result" class="hidden" aria-hidden="true">
+  <div class="ghost-result-card">
+    <div class="ghost-result-icon" id="ghost-result-icon">🏆</div>
+    <div class="ghost-result-text">
+      <div class="ghost-result-title" id="ghost-result-title" data-i18n="ghost.win_title">WYGRAŁEŚ!</div>
+      <div class="ghost-result-subtitle" id="ghost-result-subtitle" data-i18n="ghost.win_subtitle">Pobiłeś rekord ducha</div>
+       <div class="ghost-result-times">
+        <span class="ghost-result-time-label" data-i18n="ghost.your_time">Twój czas:</span>
+        <span class="ghost-result-player-time">--.---s</span>
+        <span class="ghost-result-vs">vs</span>
+        <span class="ghost-result-ghost-time">--.---s</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Zniszczenie ducha: płomienie + shake ─── -->
+<div id="ghost-destroyed" class="hidden" aria-hidden="true">
+  <div class="ghost-destroyed-flames">
+    <span class="flame">🔥</span>
+    <span class="flame">🔥</span>
+    <span class="flame">🔥</span>
+    <span class="flame">🔥</span>
+    <span class="flame">🔥</span>
+    <span class="flame">🔥</span>
+    <span class="flame">🔥</span>
+  </div>
+  <div class="ghost-destroyed-text">
+    <div class="ghost-destroyed-title" data-i18n="ghost.destroyed_title">ZNISZCZYŁEŚ DUCHA!</div>
+    <div class="ghost-destroyed-subtitle" data-i18n="ghost.destroyed_subtitle">+100 pkt</div>
+  </div>
+</div>
+
+
+
+
 <div id="pauseIndicator" class="hidden">
   <div data-i18n="pause.title">⏸️ PAUSED</div>
   <div style="font-size:13px; color:#aaa; margin-top:8px;" data-i18n-html="pause.hint">Press <b>P</b> to resume</div>
