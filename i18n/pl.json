@@ -114,7 +114,10 @@
     "first_title": "GRATULACJE!",
     "first_subtitle": "Zaliczyłeś tor",
     "your_time": "Twój czas:",
+    "lose_subtitle": "Duch był szybszy",
+    "lose_subtitle_in_progress": "Duch był szybszy (w trakcie)",
     "in_progress": "w trakcie",
-    "first_time_hint": "Kolejny lot — ścigaj ducha!"
+    "first_time_hint": "Kolejny lot — ścigaj ducha!",
+    "record_cleared": "👻 Rekord ghosta wyczyszczony — lecisz sam!"
   }
 }

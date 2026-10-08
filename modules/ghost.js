@@ -15,6 +15,7 @@ const SAMPLE_INTERVAL_MS = 33;
 const INTRO_DURATION_MS = 6000;
 const TACKLE_RADIUS = 2.0;
 const TACKLE_RESPAWN_MS = 2000;
+const TACKLE_GRACE_MS = 12000;
 
 // ─── Prosty, tani mesh drona-ducha ───
 function makeGhostDrone(baseColor = 0x66ccff) {
@@ -387,14 +388,19 @@ export class GhostReplay {
       const delta = this._computeDelta(playerPos, currentLapTime);
       if (delta != null) {
         if (this.onDeltaUpdate) this.onDeltaUpdate(delta, delta > 0);
+
         // Taranowanie tylko gdy gracz PRZED duchem (delta > 0)
+        // i minęło 12 s grace period od startu playbacku
         if (delta > 0 && !this.destroyed) {
-          const dx = playerPos.x - this._currentPos.x;
-          const dy = playerPos.y - this._currentPos.y;
-          const dz = playerPos.z - this._currentPos.z;
-          const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-          if (dist < TACKLE_RADIUS) {
-            this.destroy(now);
+          const elapsed = now - this.playbackStart;
+          if (elapsed >= TACKLE_GRACE_MS) {
+            const dx = playerPos.x - this._currentPos.x;
+            const dy = playerPos.y - this._currentPos.y;
+            const dz = playerPos.z - this._currentPos.z;
+            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            if (dist < TACKLE_RADIUS) {
+              this.destroy(now);
+            }
           }
         }
       }

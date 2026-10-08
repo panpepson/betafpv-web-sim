@@ -665,3 +665,38 @@ body.screen-shake {
 #ghost-result.neutral .ghost-result-icon {
   filter: drop-shadow(0 0 14px rgba(102, 204, 255, 0.9));
 }
+
+
+#ghost-grace {
+  color: #ffcc66;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 14px;
+  padding: 2px 8px;
+  background: rgba(80, 60, 0, 0.4);
+  border-radius: 4px;
+  font-weight: 600;
+}
+#ghost-grace.hidden { display: none; }
+
+#toast {
+  position: fixed;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: rgba(10, 20, 40, 0.92);
+  color: #a8e0ff;
+  border: 2px solid #66ccff;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-family: monospace;
+  font-size: 16px;
+  z-index: 9500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  box-shadow: 0 0 20px rgba(102, 204, 255, 0.5);
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

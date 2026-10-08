@@ -94,8 +94,24 @@ export function t(key, vars = {}) {
     if (value && typeof value === 'object' && k in value) {
       value = value[k];
     } else {
-      console.warn(`⚠️ i18n: brak klucza "${key}" w "${currentLang}"`);
-      return key;
+      // Fallback: spróbuj znaleźć w EN
+      let fallback = allTranslations[DEFAULT_LANG];
+      for (const k2 of keys) {
+        if (fallback && typeof fallback === 'object' && k2 in fallback) {
+          fallback = fallback[k2];
+        } else {
+          fallback = null;
+          break;
+        }
+      }
+      if (typeof fallback === 'string') {
+        console.warn(`⚠️ i18n: brak klucza "${key}" w "${currentLang}" — używam EN`);
+        value = fallback;
+      } else {
+        console.warn(`⚠️ i18n: brak klucza "${key}" w "${currentLang}" i "${DEFAULT_LANG}"`);
+        return key;
+      }
+      break;
     }
   }
 
@@ -107,7 +123,6 @@ export function t(key, vars = {}) {
 
   return value;
 }
-
 // ================================================================
 // APLIKACJA TŁUMACZEŃ DO DOM
 // ================================================================

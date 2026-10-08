@@ -114,7 +114,10 @@
     "first_title": "CONGRATULATIONS!",
     "first_subtitle": "You completed the track",
     "your_time": "Your time:",
+    "lose_subtitle": "The ghost was faster",
+    "lose_subtitle_in_progress": "The ghost was faster (in progress)",
     "in_progress": "in progress",
-    "first_time_hint": "Next flight — chase the ghost!"
+    "first_time_hint": "Next flight — chase the ghost!",
+    "record_cleared": "👻 Ghost record cleared — you're on your own!"
   }
 }

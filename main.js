@@ -15,6 +15,12 @@ const INPUT_SMOOTHING  = 0.60;
 const CAMERA_SMOOTHING = 0.75;
 const INPUT_DEADZONE   = 0.02;
 
+// ================================================================
+// GRACE PERIOD — przez pierwsze 12 s od startu wyścigu
+// taranowanie ghosta jest ignorowane (żeby nie wygrać przez przypadek)
+// ================================================================
+const TACKLE_GRACE_MS = 12000;
+
 const smoothedInput = { throttle: 0, yaw: 0, roll: 0, pitch: 0 };
 const cameraSmooth  = { pitch: 0, roll: 0, yaw: 0, initialized: false };
 
@@ -22,6 +28,22 @@ function deadzone(v, threshold = INPUT_DEADZONE) {
   if (Math.abs(v) < threshold) return 0;
   const sign = Math.sign(v);
   return sign * ((Math.abs(v) - threshold) / (1 - threshold));
+}
+
+// ================================================================
+// TOAST — krótki komunikat na środku ekranu
+// ================================================================
+function showToast(text, duration = 1800) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove('show'), duration);
 }
 
 // ================================================================
@@ -317,6 +339,7 @@ window.startSimulator = function(worldKey) {
   const gateCounterEl = document.getElementById('gate-counter');
   const gateTimerEl   = document.getElementById('gate-timer');
   const ghostDeltaEl  = document.getElementById('ghost-delta');
+  const ghostGraceEl  = document.getElementById('ghost-grace');
 
   function formatTime(ms) {
     const total = Math.max(0, ms | 0);
@@ -507,16 +530,16 @@ window.startSimulator = function(worldKey) {
     } else {
       if (iconEl)  iconEl.textContent  = '🍌';
       if (titleEl) titleEl.textContent = (t && t('ghost.lose_title')) || 'PRZEGRAŁEŚ';
-if (subEl) subEl.textContent = final
-  ? ((t && t('ghost.lose_subtitle')) || 'The ghost was faster')
-  : ((t && t('ghost.lose_subtitle_in_progress')) || 'The ghost was faster (in progress)');
+      if (subEl)   subEl.textContent   = final
+        ? ((t && t('ghost.lose_subtitle')) || 'Duch był szybszy')
+        : ((t && t('ghost.lose_subtitle_in_progress')) || 'Duch był szybszy (w trakcie)');
       resultEl.classList.add('lose');
     }
 
     if (pTimeEl) {
-pTimeEl.textContent = playerTime != null
-  ? (playerTime / 1000).toFixed(3) + 's'
-  : (final ? '--.---s' : ((t && t('ghost.in_progress')) || 'in progress'));
+      pTimeEl.textContent = playerTime != null
+        ? (playerTime / 1000).toFixed(3) + 's'
+        : (final ? '--.---s' : ((t && t('ghost.in_progress')) || 'w trakcie'));
     }
     if (gTimeEl) {
       gTimeEl.textContent = ghostTime != null ? (ghostTime / 1000).toFixed(3) + 's' : '--.---s';
@@ -547,9 +570,13 @@ pTimeEl.textContent = playerTime != null
     }, 3000);
   }
 
-  /** Wykonaj auto-reset — przygotuj nową rundę. */
-  function performAutoReset() {
-    console.log('🔄 [auto-reset] nowa runda');
+  /**
+   * Wykonaj auto-reset — przygotuj nową rundę.
+   * @param {object} opts
+   *   wipeGhostRecord {boolean} — jeśli true, kasuje rekord ghosta dla tej planszy
+   */
+  function performAutoReset({ wipeGhostRecord = false } = {}) {
+    console.log('🔄 [auto-reset] nowa runda', wipeGhostRecord ? '(WIPE ghost record)' : '');
 
     // Ukryj overlaye
     hideResultOverlay();
@@ -561,9 +588,15 @@ pTimeEl.textContent = playerTime != null
     // Reset bramek
     gateTracker.reset();
 
-    // Zatrzymaj ghosta (ukryj go, wyczyść playback)
+    // Zatrzymaj ghosta / wyczyść rekord
     if (ghost) {
-      ghost.stopPlayback();
+      if (wipeGhostRecord) {
+        ghost.clearSaved();
+        console.log('👻 [R] rekord ghosta wyczyszczony dla', worldKey);
+        showToast((t && t('ghost.record_cleared')) || '👻 Rekord ghosta wyczyszczony — lecisz sam!');
+      } else {
+        ghost.stopPlayback();
+      }
       // Przygotuj nagrywanie nowej rundy
       ghost.startRecording(performance.now());
     }
@@ -575,11 +608,12 @@ pTimeEl.textContent = playerTime != null
     raceGhostTimeMs = null;
     raceStartTime = 0;
 
-    // Delta hidden
+    // Delta + grace hidden
     if (ghostDeltaEl) {
       ghostDeltaEl.classList.add('hidden');
       ghostDeltaEl.classList.remove('ahead', 'behind');
     }
+    if (ghostGraceEl) ghostGraceEl.classList.add('hidden');
 
     console.log('👻 [auto-reset] gotowe — przeleć przez bramkę #1, żeby wystartować');
   }
@@ -698,7 +732,12 @@ pTimeEl.textContent = playerTime != null
 
       scheduleAutoReset();
     } else {
-      // Gracz doleciał DRUGI (ghost już był) — wynik już wisi
+      // Gracz doleciał DRUGI (ghost już był) — zaktualizuj czas gracza w overlayu
+      const resultEl = document.getElementById('ghost-result');
+      if (resultEl && resultEl.classList.contains('show')) {
+        const pTimeEl = resultEl.querySelector('.ghost-result-player-time');
+        if (pTimeEl) pTimeEl.textContent = (playerTime / 1000).toFixed(3) + 's';
+      }
       console.log('🏁 [finish] gracz doleciał drugi — auto-reset');
       scheduleAutoReset();
     }
@@ -787,11 +826,11 @@ pTimeEl.textContent = playerTime != null
     }
     if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') {
       e.preventDefault();
-      // Awaryjny restart — pełny reset bez zapisu
+      // Awaryjny restart — pełny reset + WIPE rekordu ghosta dla tej planszy
       if (autoResetTimer) { clearTimeout(autoResetTimer); autoResetTimer = null; }
-      performAutoReset();
+      performAutoReset({ wipeGhostRecord: true });
       motorAudio.beep(440, 0.15, 0.10);
-      console.log('🔄 [R] Awaryjny restart');
+      console.log('🔄 [R] Awaryjny restart + wipe ghosta');
       return;
     }
     if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') { e.preventDefault(); audioState.masterMute = !audioState.masterMute; applyAudioState(); return; }
@@ -954,6 +993,22 @@ pTimeEl.textContent = playerTime != null
       ghost.update(now, currentLapTime, drone.pos);
     }
 
+    // ─── Wskaźnik grace period (🛡️) ───
+    if (ghostGraceEl) {
+      if (raceActive && !raceFinished && ghost && ghost.playing) {
+        const elapsed = now - raceStartTime;
+        const graceLeft = Math.max(0, TACKLE_GRACE_MS - elapsed);
+        if (graceLeft > 0) {
+          ghostGraceEl.classList.remove('hidden');
+          ghostGraceEl.textContent = `🛡️ ${(graceLeft / 1000).toFixed(1)}s`;
+        } else {
+          ghostGraceEl.classList.add('hidden');
+        }
+      } else {
+        ghostGraceEl.classList.add('hidden');
+      }
+    }
+
     // ─── Kamera ───
     if (!cameraSmooth.initialized) {
       cameraSmooth.pitch = drone.pitch;
@@ -1015,6 +1070,8 @@ window.stopSimulator = function() {
   if (resultEl) { resultEl.classList.remove('show'); resultEl.classList.add('hidden'); }
   const destroyedEl = document.getElementById('ghost-destroyed');
   if (destroyedEl) { destroyedEl.classList.remove('show'); destroyedEl.classList.add('hidden'); }
+  const graceEl = document.getElementById('ghost-grace');
+  if (graceEl) graceEl.classList.add('hidden');
   document.body.classList.remove('screen-shake');
 
   if (simState.ghost) { simState.ghost.dispose(); simState.ghost = null; }
