@@ -1,125 +1,239 @@
 # 🚁 BetaFPV Web Sim
 
-**Przeglądarkowy symulator drona FPV** sterowany fizycznym padem **BetaFPV LiteRadio 2 SE** przez **WebHID API**.
+**Browser-based FPV drone simulator** controlled with a physical **BetaFPV LiteRadio 2 SE** radio via the **WebHID API**.
 
-Projekt napisany w całości w JavaScript (ES Modules) z wykorzystaniem **Three.js** do renderowania 3D. Nie wymaga instalacji — wystarczy przeglądarka oparta na Chromium.
+Written entirely in JavaScript (ES Modules) using **Three.js** for 3D rendering. No installation required — just a Chromium-based browser.
 
+🇬🇧 **English** · [🇵🇱 Polski](README.pl.md)
 
-![ Symulacja lotu ](./img/sym1.jpg)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Three.js](https://img.shields.io/badge/Three.js-0.160-blue)
+![WebHID](https://img.shields.io/badge/WebHID-Chrome%2FEdge%2FOpera%2FBrave-green)
 
+![Flight simulation](./img/sym1.jpg)
 
-## ✨ Funkcje
-
-- 🎮 **Bezpośrednia obsługa pada BetaFPV LiteRadio 2 SE** przez WebHID (bez sterowników).
-- 🗺️ **Kreator mapowania osi** — ruszasz drążkami, program pokazuje, które pary bajtów się poruszają, Ty przypisujesz je do funkcji drona.
-- 🎯 **Automatyczna kalibracja zakresów** — program mierzy min/max/center dla każdej osi.
-- 🌍 **Trzy poziomy trudności** (Łatwa / Średnia / Ekspert) z różną fizyką i scenografią.
-- 🎨 **Scena 3D w Three.js**: niebo z shaderem gradientowym, mgła, cienie PCFSoft, drzewa, górki, woda, bramki, przeszkody.
-- 📊 **HUD w czasie rzeczywistym** — throttle, yaw, roll, pitch, wysokość, prędkość.
-- 🔄 **Auto-połączenie** z padem przy starcie (jeśli był już autoryzowany).
-- 🛠️ **Narzędzie diagnostyczne** `detector.html` do analizy surowych raportów HID.
+🔗 **Live demo:** https://betafpv.vercel.app
 
 ---
 
-## ⚙️ Wymagania
+## ✨ Features
 
-### Przeglądarka
-- **Chrome / Edge / Opera / Brave** w wersji **89+** (WebHID).
-- ❌ Firefox i Safari **nie obsługują** WebHID.
-- Strona **musi być serwowana po HTTPS** lub z `localhost` (WebHID nie działa z `file://`).
+- 🎮 **Direct BetaFPV LiteRadio 2 SE support** via WebHID — no drivers needed.
+- 🗺️ **Axis mapping wizard** — move the sticks, see which byte pairs move, and assign them to drone functions.
+- 🎯 **Automatic range calibration** — measures min/max/center for each axis.
+- 🌍 **Four difficulty levels** — Easy / Medium / Expert / Race, with different physics and scenery.
+- 👻 **Ghost Replay** — your previous best lap is saved locally and races against you. Beat it, lose to it, or **ram it out of the sky**.
+- 🎨 **3D scene in Three.js** — gradient shader sky, fog, PCFSoft shadows, trees, hills, water, gates and obstacles.
+- 📊 **Real-time HUD** — throttle, yaw, roll, pitch, altitude, speed, gate counter, timer and delta vs. ghost.
+- 🧭 **FPV camera angle switch** — 0° / 20° / 35° using a 3-position radio switch.
+- 🌐 **Bilingual UI** — English / Polish with automatic language detection.
+- 🔄 **Auto-connect** — reconnects to the radio on startup if it was previously authorized.
+- 🛠️ **Diagnostic tool** — `detector.html` for analyzing raw HID reports.
 
-### Sprzęt
-- Pad **BetaFPV LiteRadio 2 SE** (VID `0x0483`, PID `0x5750`).
-- Kabel USB (pad musi być w trybie Joystick — nie w trybie ładowania).
+---
 
-### Serwer lokalny
-Do uruchomienia potrzebny jest dowolny lokalny serwer HTTP. Przykłady:
+## ⚙️ Requirements
+
+### Browser
+
+- **Chrome / Edge / Opera / Brave** version **89+** with WebHID support.
+- ❌ Firefox and Safari **do not support WebHID**.
+- The page must be served over **HTTPS** or from `localhost`.
+- WebHID does not work with `file://`.
+
+### Hardware
+
+- **BetaFPV LiteRadio 2 SE** radio (VID `0x0483`, PID `0x5750`).
+- USB cable.
+- The radio must be in **Joystick** mode, not charging mode.
+
+### Local server
+
+Any local HTTP server will work:
 
 ```bash
 # Python 3
 python -m http.server 8000
 
-# Node.js (npx)
+# Node.js
 npx serve .
 
 # PHP
 php -S localhost:8000
 ```
 
-## 🎮 Jak korzystać
+Then open:
 
-Krok 1/4 — Podłącz pad
-Kliknij „Połącz z padem” i wybierz „BETAFPV Joystick” z listy urządzeń.
+```text
+http://localhost:8000
+```
 
-Krok 2/4 — Mapowanie osi
-Ruszaj drążkami po kolei (każdy w każdą stronę). Obserwuj, które paski się ruszają, i przypisz odpowiednie pary (P0–P7) do funkcji:
+---
 
-THROTTLE — lewy drążek w górę/dół
+## 🎮 How to use
 
-YAW — lewy drążek w lewo/prawo
+### Step 1/4 — Connect the radio
 
-PITCH — prawy drążek w górę/dół
+Click **Connect radio** and select **BETAFPV Joystick** from the device list.
 
-ROLL — prawy drążek w lewo/prawo
+### Step 2/4 — Axis mapping
 
-Kamera - 3 pooziomy najlepiej użyć przełaczników SB i SC  
+Move each stick in every direction and observe which bars move. Then assign the byte pairs (`P0–P7`) to the drone functions:
 
-Pary nieprzypisane (ustawione na ---) są ignorowane.
+| Function | Stick | Direction |
+|---|---|---|
+| THROTTLE | Left | Up / Down |
+| YAW | Left | Left / Right |
+| PITCH | Right | Up / Down |
+| ROLL | Right | Left / Right |
+| CAMERA | Switch SA/SB/SC | 3-position |
 
+Unassigned pairs (`---`) are ignored by the simulator.
 
-### ⚠️ Uwaga: mapowanie trzeba powtórzyć za każdym razem po odświeżeniu strony. Pad przy każdym podłączeniu generuje sygnał na innych parach bajtów — dlatego nie da się zapisać mapowania na stałe.
+> ⚠️ **Important:** Mapping must be repeated after refreshing the page. The radio generates signals on different byte pairs each time it connects, so the mapping cannot be saved permanently. Calibration is remembered in the browser as long as the radio remains connected.
 
-Krok 3/4 — Kalibracja zakresów
-Program poprosi Cię po kolei o ruszanie każdą funkcją. Ruszaj drążkiem do oporu w obie strony — kalibracja trwa ~4 sekundy na funkcję (łącznie ~16 s).
+### Step 3/4 — Range calibration
 
-Krok 4/4 — Wybór planszy
-Wybierz poziom trudności i startuj. W locie możesz wrócić do menu przyciskiem ⬅ Menu w prawym górnym rogu.
+The app will ask you to move each function in turn.
 
+Move the stick to the limit in both directions. Calibration takes approximately **4 seconds per function**, around **16 seconds total**.
 
-## Sterowanie
+### Step 4/4 — Choose a world
 
-Funkcja	Drążek	Efekt
-Throttle	Lewy ↑↓	Ciąg silników (góra/dół)
-Yaw	Lewy ←→	Obrót wokół osi pionowej
-Pitch	Prawy ↑↓	Pochylenie przód/tył
-Roll	Prawy ←→	Pochylenie na boki
+Pick a difficulty level and take off.
 
-Klawiatura 
+During flight, you can return to the menu using the **⬅ Menu** button in the top-right corner.
 
-P - Pauza 
-K - Kamera 
-Spacja - celownik
+---
 
+## 🕹️ Controls
 
+### Radio sticks — Mode 2
 
-## 🛠️ Jak dodawać przeszkody do torów:
+| Function | Stick | Effect |
+|---|---|---|
+| Throttle | Left ↑↓ | Motor thrust |
+| Yaw | Left ←→ | Rotation around vertical axis |
+| Pitch | Right ↑↓ | Forward/backward tilt |
+| Roll | Right ←→ | Left/right tilt |
 
-   - worlds/info_pl.txt (Polski 🇵🇱)
-   - worlds/info_en.txt (English 🇬🇧)
+### Keyboard
 
+| Key | Action |
+|---|---|
+| `P` | Pause / resume |
+| `Space` | Toggle OSD crosshair |
+| `K` | Cycle camera angle |
+| `R` | Emergency full restart — no record saved |
+| `M` | Master mute — engine + music |
+| `N` | Mute engine only |
+| `B` | Mute background music only |
 
-## ❌ Nie działa bezpośrednio
+---
 
-Pady XInput (Xbox, DualShock/DualSense) — WebHID nie ma do nich dostępu ze względów bezpieczeństwa. Wymagana migracja na Gamepad API.
+## 👻 Ghost Replay
 
-Pad DJI RC-N1 (Mini 2 / Air 2 / Mini 3) — po podłączeniu przez USB nie jest rozpoznawany jako HID. Wymaga zewnętrznego konwertera (np. DJI_RC-N1_SIMULATOR_FLY_DCL) + Gamepad API.
+The simulator saves your best lap time for each world in `localStorage`.
 
-Aparatury Radiomaster Zorro / Pocket / TBS Tango 2 — teoretycznie kompatybilne po przełączeniu w tryb USB Joystick, ale wymagają zmiany VID/PID w kodzie.
+Storage key:
 
-## 🤝 Wkład w projekt
+```text
+betafpv_ghost_<worldId>
+```
 
-Pull requesty i zgłoszenia błędów są mile widziane! Jeśli chcesz dodać obsługę nowego pada, otwórz Issue z:
+On the next run, a semi-transparent ghost drone races against you along your previous trajectory.
 
-Nazwą modelu,
-VID/PID,
-Zrzutem z detector.html (HEX + DEC).
+### Race flow
 
-## 📜 Licencja
-  Projekt udostępniany na licencji MIT 
+The ghost starts only after you pass **gate #1**. The timer also starts at that moment.
 
-## 🙏 Podziękowania
-   Three.js — silnik 3D
-   WebHID API — obsługa pada
-   Społeczność FPV za feedback i testy
+A 6-second intro appears:
 
-### Miłego latania! 🚁💨
+> 👻 Your previous best is chasing you! Record: XX.XXXs
+
+### Three possible outcomes
+
+- 🏆 **You win** — you reach the last gate first. The result overlay shows your time versus the ghost's.
+- 🍌 **You lose** — the ghost reaches the finish first. You can still finish your lap.
+- 💥 **You destroy the ghost** — ram it from behind while you're ahead. The overlay shows **GHOST DESTROYED!**, with flames and screen shake.
+
+The simulator automatically resets **3 seconds** after the result.
+
+Press `R` for an emergency restart. No record is saved.
+
+---
+
+## 🛠️ Adding obstacles to tracks
+
+Track files are located in `worlds/`, with one module per world.
+
+Full guides:
+
+- 🇵🇱 Polish: `worlds/info_pl.txt`
+- 🇬🇧 English: `worlds/info_en.txt`
+
+---
+
+## ❌ Not supported out of the box
+
+### XInput gamepads
+
+Xbox, DualShock and DualSense controllers are not accessible through WebHID for security reasons.
+
+Support would require migration to the **Gamepad API**.
+
+### DJI RC-N1
+
+DJI RC-N1 controllers used with Mini 2 / Air 2 / Mini 3 are not recognized as HID devices after USB connection.
+
+They require an external converter, for example `DJI_RC-N1_SIMULATOR_FLY_DCL`, together with the Gamepad API.
+
+### Radiomaster / TBS
+
+Radiomaster Zorro / Pocket and TBS Tango 2 are theoretically compatible in USB Joystick mode, but require changing the VID/PID in the code.
+
+---
+
+## 🚧 Known issues / TODO
+
+| # | Issue | Priority |
+|---:|---|---|
+| 1 | Autoplay policy on localhost — Vercel works, localhost requires a click | Low |
+| 2 | Axis mapping is not persisted — WebHID limitation | Medium |
+| 3 | XInput gamepads do not work — requires Gamepad API | Medium |
+| 4 | DJI RC-N1 does not work — requires a converter | Low |
+| 5 | Maximum audible gates verification (raycast) | Low |
+| 6 | `img/poster.jpg` unused — removed from `<video>` | Cosmetic |
+
+---
+
+## 🤝 Contributing
+
+Pull requests and bug reports are welcome!
+
+If you want to add support for a new radio, open an Issue and include:
+
+- Model name
+- VID / PID
+
+---
+
+## 📜 License
+
+Released under the **MIT License**.
+
+---
+
+## 🙏 Credits
+
+- **Three.js** — 3D engine
+- **WebHID API** — radio support
+- **The FPV community** — feedback and testing
+
+---
+
+🇵🇱 **[Read the Polish version →](README.pl.md)**
+
+🔗 **[Launch the simulator →](https://betafpv.vercel.app)**
+
+**Happy flying! 🚁💨**

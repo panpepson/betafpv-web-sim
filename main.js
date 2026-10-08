@@ -507,16 +507,16 @@ window.startSimulator = function(worldKey) {
     } else {
       if (iconEl)  iconEl.textContent  = '🍌';
       if (titleEl) titleEl.textContent = (t && t('ghost.lose_title')) || 'PRZEGRAŁEŚ';
-      if (subEl)   subEl.textContent   = final
-        ? ((t && t('ghost.lose_subtitle')) || 'Duch był szybszy')
-        : ((t && t('ghost.lose_subtitle')) || 'Duch był szybszy') + ' (w trakcie)';
+if (subEl) subEl.textContent = final
+  ? ((t && t('ghost.lose_subtitle')) || 'The ghost was faster')
+  : ((t && t('ghost.lose_subtitle_in_progress')) || 'The ghost was faster (in progress)');
       resultEl.classList.add('lose');
     }
 
     if (pTimeEl) {
-      pTimeEl.textContent = playerTime != null
-        ? (playerTime / 1000).toFixed(3) + 's'
-        : (final ? '--.---s' : 'w trakcie');
+pTimeEl.textContent = playerTime != null
+  ? (playerTime / 1000).toFixed(3) + 's'
+  : (final ? '--.---s' : ((t && t('ghost.in_progress')) || 'in progress'));
     }
     if (gTimeEl) {
       gTimeEl.textContent = ghostTime != null ? (ghostTime / 1000).toFixed(3) + 's' : '--.---s';
