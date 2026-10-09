@@ -181,13 +181,27 @@ window.startSimulator = function(worldKey) {
   const cfg = WORLDS[worldKey] || WORLDS.beginner;
   console.log('🚁 Start symulatora —', cfg.name, '| fizyka:', cfg.physics.mode, '| kamera:', cfg.camera.angle + '°');
   ensureAudioInit();
-  if (simState) window.stopSimulator();
+
+  // 🔧 HARD RESET: zatrzymaj poprzedni + usuń WSZYSTKIE canvasy z BODY (niezależnie od simState)
+  if (simState) {
+    console.log('🛑 [hard-reset] zatrzymuję poprzedni symulator...');
+    try { window.stopSimulator(); } catch (e) { console.warn('[hard-reset] stopSimulator error:', e); }
+  }
+
+  // Usuń wszelkie canvasy z BODY (na wypadek gdyby stopSimulator zawiódł)
+  const orphanCanvases = document.body.querySelectorAll(':scope > canvas');
+  if (orphanCanvases.length > 0) {
+    console.log(`🧹 [hard-reset] usuwam ${orphanCanvases.length} canvasów z BODY`);
+    orphanCanvases.forEach(c => c.remove());
+  }
+  simState = null;
 
   smoothedInput.throttle = 0; smoothedInput.yaw = 0;
   smoothedInput.roll = 0; smoothedInput.pitch = 0;
   cameraSmooth.initialized = false;
 
   const scene = new THREE.Scene();
+
   scene.fog = new THREE.Fog(cfg.sky.bottom, cfg.fog.near, cfg.fog.far);
 
   const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 2000);
