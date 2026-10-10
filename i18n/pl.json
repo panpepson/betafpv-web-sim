@@ -124,5 +124,11 @@
   "text": "Ta strona używa Google Analytics 4 do anonimowych statystyk. Możesz zaakceptować lub odrzucić.",
   "accept": "Akceptuję",
   "reject": "Odrzucam"
+}, 
+"leaderboard": {
+  "title": "🏆 TOP 3",
+  "no_laps": "🏁 Brak przejazdów — zalicz tor!",
+  "missing": "Jeszcze {n} przejazd{s} do pełnego TOP 3",
+  "full": "Pełny ranking — ścigaj się z sobą!"
 }
 }

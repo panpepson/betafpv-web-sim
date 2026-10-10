@@ -124,5 +124,11 @@
   "text": "This site uses Google Analytics 4 for anonymous statistics. You can accept or reject.",
   "accept": "Accept",
   "reject": "Reject"
+},
+"leaderboard": {
+  "title": "🏆 TOP 3",
+  "no_laps": "🏁 No laps yet — finish the track!",
+  "missing": "{n} more lap{s} to full TOP 3",
+  "full": "Full ranking — race yourself!"
 }
 }

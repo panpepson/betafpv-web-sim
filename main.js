@@ -4,6 +4,7 @@ import { CollisionSystem } from './modules/collisions.js';
 import { GateTracker }    from './modules/gates.js';
 import { MotorAudio }     from './modules/audio.js';
 import { GhostReplay }    from './modules/ghost.js';
+import { Leaderboard } from './modules/leaderboard.js';
 import { WORLDS }         from './worlds/index.js';
 
 let simState = null;
@@ -507,6 +508,78 @@ window.startSimulator = function(worldKey) {
     ghost.onGhostRespawn = () => motorAudio.beep(880, 0.08, 0.06);
   }
 
+
+
+  // ════════════════════════════════════════════════════════════════
+  // 🏆 LEADERBOARD (TOP 3) — HUD kokpitowy
+  // ════════════════════════════════════════════════════════════════
+  const leaderboard = new Leaderboard(worldKey);
+  leaderboard.load();
+
+  const lbEl   = document.getElementById('leaderboard');
+  const lbList = document.getElementById('lb-list');
+
+  // ─── Wariant C: auto-fade ───
+  const LB_FULL_OPACITY   = 1.0;
+  const LB_DIM_OPACITY    = 0.77;
+  const LB_FADE_DELAY_MS  = 3000;
+
+  let _lbFadeTimer = null;
+
+  function setLeaderboardDimmed(dimmed) {
+    if (!lbEl) return;
+    lbEl.style.opacity = dimmed ? String(LB_DIM_OPACITY) : String(LB_FULL_OPACITY);
+  }
+
+  function scheduleLeaderboardFade() {
+    if (_lbFadeTimer) clearTimeout(_lbFadeTimer);
+    _lbFadeTimer = setTimeout(() => setLeaderboardDimmed(true), LB_FADE_DELAY_MS);
+  }
+
+  function flashLeaderboard() {
+    if (!lbEl) return;
+    setLeaderboardDimmed(false);
+    lbEl.classList.remove('pulse');
+    void lbEl.offsetWidth;
+    lbEl.classList.add('pulse');
+    scheduleLeaderboardFade();
+  }
+
+  function renderLeaderboard(newRank = null) {
+    if (!lbEl || !lbList) return;
+    lbEl.classList.remove('hidden');
+
+    const medals = ['🥇', '🥈', '🥉'];
+    lbList.innerHTML = '';
+
+    for (let i = 0; i < 3; i++) {
+      const li = document.createElement('li');
+      li.className = `lb-rank-${i + 1}`;
+      const e = leaderboard.entries[i];
+      if (e) {
+        const sec = (e.timeMs / 1000).toFixed(3);
+        li.innerHTML = `<span class="lb-medal">${medals[i]}</span>
+                        <span class="lb-time">${sec}s</span>`;
+      } else {
+        li.innerHTML = `<span class="lb-medal">${medals[i]}</span>
+                        <span class="lb-empty">--.---</span>`;
+      }
+      lbList.appendChild(li);
+    }
+
+    // Nowy rekord → pełna jasność + pulse + auto-fade po 3 s
+    if (newRank !== null) {
+      flashLeaderboard();
+    } else {
+      // zwykłe renderowanie (start / auto-reset) → od razu przyciemnij
+      setLeaderboardDimmed(true);
+    }
+  }
+
+  leaderboard.onChange = () => renderLeaderboard();
+  renderLeaderboard();
+
+
   // ════════════════════════════════════════════════════════════════
   // HELPERY
   // ════════════════════════════════════════════════════════════════
@@ -629,6 +702,9 @@ window.startSimulator = function(worldKey) {
     }
     if (ghostGraceEl) ghostGraceEl.classList.add('hidden');
 
+    // 🏆 Odśwież panel TOP 3
+    renderLeaderboard();
+
     console.log('👻 [auto-reset] gotowe — przeleć przez bramkę #1, żeby wystartować');
   }
 
@@ -696,8 +772,19 @@ window.startSimulator = function(worldKey) {
     });
 
     // Zapisz rekord (jeśli lepszy)
+    // Zapisz rekord (jeśli lepszy)
     if (ghost) {
       ghost.onLapComplete(playerTime);
+    }
+
+    // 🏆 Leaderboard — zapisz czas w TOP 3
+    const lbResult = leaderboard.submit(playerTime);
+    if (lbResult.isNew) {
+      console.log(`🏆 [leaderboard] nowy wpis #${lbResult.rank} w TOP 3`);
+      renderLeaderboard(lbResult.rank);
+      motorAudio.beep(1200, 0.1, 0.08);
+    } else {
+      console.log('🏆 [leaderboard] poza TOP 3');
     }
 
     if (!raceFinished) {
@@ -1084,8 +1171,12 @@ window.stopSimulator = function() {
   if (resultEl) { resultEl.classList.remove('show'); resultEl.classList.add('hidden'); }
   const destroyedEl = document.getElementById('ghost-destroyed');
   if (destroyedEl) { destroyedEl.classList.remove('show'); destroyedEl.classList.add('hidden'); }
+
+
   const graceEl = document.getElementById('ghost-grace');
   if (graceEl) graceEl.classList.add('hidden');
+  const lbEl = document.getElementById('leaderboard');   // ← NOWE
+  if (lbEl) lbEl.classList.add('hidden');                // ← NOWE
   document.body.classList.remove('screen-shake');
 
   if (simState.ghost) { simState.ghost.dispose(); simState.ghost = null; }

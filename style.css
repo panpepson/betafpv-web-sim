@@ -780,3 +780,163 @@ body.screen-shake {
     justify-content: center;
   }
 }
+
+/* ─── Leaderboard (TOP 3) — HUD kokpitowy ─── */
+#leaderboard {
+  position: absolute;
+  top: 56px;
+  right: 10px;
+  min-width: 102px;
+  padding: 6px 10px 7px 10px;
+
+  /* praktycznie przezroczyste tło — efekt szkła */
+  background: rgba(0, 12, 24, 0.18);
+  border: 1px solid rgba(120, 220, 255, 0.28);
+  border-radius: 6px;
+
+  /* HUD-owy glow — subtelny */
+  box-shadow:
+    0 0 12px rgba(102, 204, 255, 0.10),
+    inset 0 0 8px rgba(102, 204, 255, 0.06);
+
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+  color: #cfe9ff;
+
+  z-index: 55;
+  pointer-events: none;
+  user-select: none;
+
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+
+  /* auto-fade (wariant C) */
+  opacity: 1;
+  transition: opacity 0.6s ease, transform 0.25s ease;
+  overflow: hidden;
+}
+
+#leaderboard.hidden { display: none; }
+
+/* ─── Nagłówek ─── */
+.lb-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(120, 220, 255, 0.18);
+}
+
+.lb-title {
+  display: block;                    /* ✅ span → block, zajmuje całą szerokość */
+  text-align: right; 
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #ffdd88;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 8px rgba(255, 221, 136, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+/* ─── Lista czasów ─── */
+.lb-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lb-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.lb-medal {
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.85));
+}
+
+.lb-time {
+  font-weight: 700;
+  color: #e8f6ff;
+  font-variant-numeric: tabular-nums;   /* cyfry równe — zero drgań */
+}
+
+.lb-empty {
+  color: rgba(200, 220, 255, 0.30);
+  font-weight: 400;
+}
+
+/* ─── Kolory czasów wg miejsca ─── */
+.lb-rank-1 .lb-time {
+  color: #ffd966;
+  text-shadow: 0 0 8px rgba(255, 217, 102, 0.60),
+               0 1px 2px rgba(0, 0, 0, 0.85);
+}
+.lb-rank-2 .lb-time {
+  color: #e0e8f0;
+  text-shadow: 0 0 6px rgba(224, 232, 240, 0.45),
+               0 1px 2px rgba(0, 0, 0, 0.85);
+}
+.lb-rank-3 .lb-time {
+  color: #e0b088;
+  text-shadow: 0 0 6px rgba(224, 176, 136, 0.45),
+               0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+
+
+/* ─── Wariant B: skan-line (kineskop) ─── */
+#leaderboard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(120, 220, 255, 0.08) 48%,
+    rgba(120, 220, 255, 0.14) 50%,
+    rgba(120, 220, 255, 0.08) 52%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+  animation: lb-scan 4.5s linear infinite;
+}
+
+@keyframes lb-scan {
+  0%   { background-position: 0 -100%; }
+  100% { background-position: 0  200%; }
+}
+
+/* ─── Wariant C: pulse przy nowym rekordzie ─── */
+#leaderboard.pulse {
+  animation: lb-pulse 0.7s ease-out;
+}
+
+@keyframes lb-pulse {
+  0% {
+    box-shadow: 0 0 12px rgba(102, 204, 255, 0.10),
+                inset 0 0 8px rgba(102, 204, 255, 0.06);
+    border-color: rgba(120, 220, 255, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(102, 255, 153, 0.85),
+                inset 0 0 14px rgba(102, 255, 153, 0.40);
+    border-color: rgba(102, 255, 153, 0.95);
+  }
+  100% {
+    box-shadow: 0 0 12px rgba(102, 204, 255, 0.10),
+                inset 0 0 8px rgba(102, 204, 255, 0.06);
+    border-color: rgba(120, 220, 255, 0.28);
+  }
+}
