@@ -8,12 +8,29 @@ import beginner     from './beginner.js';
 import intermediate from './intermediate.js';
 import expert       from './expert.js';
 import expert_race  from './expert_race.js';
+import minecraft    from './minecraft.js';   // 🌳 UKRYTY bonus
 
 export const WORLDS = {
   beginner,
   intermediate,
   expert,
   expert_race,
+  minecraft,          // 🌳 zarejestrowany, ale NIE MA KARTY w menu
 };
 
 export const WORLD_KEYS = Object.keys(WORLDS);
+
+// ─── Światy które pokazują się w menu (bez minecraft!) ───
+export const VISIBLE_WORLD_KEYS = [
+  'beginner',
+  'intermediate',
+  'expert',
+  'expert_race',
+];
+
+// ─── Światy ukryte (dostępne tylko przez klawisz) ───
+export const HIDDEN_WORLD_KEYS = ['minecraft'];
+
+export function isHiddenWorld(key) {
+  return HIDDEN_WORLD_KEYS.includes(key);
+}

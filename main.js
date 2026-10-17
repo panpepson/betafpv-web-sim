@@ -5,7 +5,7 @@ import { GateTracker }    from './modules/gates.js';
 import { MotorAudio }     from './modules/audio.js';
 import { GhostReplay }    from './modules/ghost.js';
 import { Leaderboard } from './modules/leaderboard.js';
-import { WORLDS }         from './worlds/index.js';
+import { WORLDS, isHiddenWorld } from './worlds/index.js';
 
 let simState = null;
 
@@ -21,6 +21,30 @@ const INPUT_DEADZONE   = 0.02;
 // taranowanie ghosta jest ignorowane (żeby nie wygrać przez przypadek)
 // ================================================================
 const TACKLE_GRACE_MS = 12000;
+
+// ================================================================
+// 🌳 UKRYTY ŚWIAT — Minecraft bonus
+// ================================================================
+const MINECRAFT_UNLOCK_KEY = 'betafpv_minecraft_unlocked';
+const MINECRAFT_WORLD_KEY  = 'minecraft';
+
+function isMinecraftUnlocked() {
+  try { return localStorage.getItem(MINECRAFT_UNLOCK_KEY) === 'true'; }
+  catch (_) { return false; }
+}
+
+function unlockMinecraft() {
+  try { localStorage.setItem(MINECRAFT_UNLOCK_KEY, 'true'); } catch (_) {}
+}
+
+/** Pokazuje komunikat o odblokowaniu (tylko raz — potem flaga w localStorage). */
+function announceMinecraftUnlock() {
+  if (isMinecraftUnlocked()) return false;  // już odblokowane wcześniej
+  unlockMinecraft();
+  showToast('🎉 Odblokowałeś UKRYTY ŚWIAT! Wciśnij "O" aby polecieć do Minecrafta 🌳', 6000);
+  console.log('🌳 [minecraft] UKRYTY ŚWIAT ODBLOKOWANY!');
+  return true;
+}
 
 const smoothedInput = { throttle: 0, yaw: 0, roll: 0, pitch: 0 };
 const cameraSmooth  = { pitch: 0, roll: 0, yaw: 0, initialized: false };
@@ -183,6 +207,9 @@ window.startSimulator = function(worldKey) {
   console.log('🚁 Start symulatora —', cfg.name, '| fizyka:', cfg.physics.mode, '| kamera:', cfg.camera.angle + '°');
   ensureAudioInit();
 
+  // 🌳 Reset licznika kolizji dla tego świata (dla wykrywania bezbłędnego przejścia expert)
+  window.__expertCollisionCount = 0;
+
   // 🔧 HARD RESET: zatrzymaj poprzedni + usuń WSZYSTKIE canvasy z BODY (niezależnie od simState)
   if (simState) {
     console.log('🛑 [hard-reset] zatrzymuję poprzedni symulator...');
@@ -312,6 +339,89 @@ window.startSimulator = function(worldKey) {
   }
   cfg.trees.forEach(t => scene.add(makeTree(t.x, t.z, t.scale)));
 
+  // ─── 🐑 Owce (Minecraft) ───
+  function makeSheep(x, z, scale) {
+    const g = new THREE.Group();
+    const bodyGeo = new THREE.BoxGeometry(1.0 * scale, 0.6 * scale, 0.7 * scale);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.7 * scale;
+    body.castShadow = true;
+    g.add(body);
+    disposables.geometries.push(bodyGeo); disposables.materials.push(bodyMat);
+
+    const headGeo = new THREE.BoxGeometry(0.35 * scale, 0.4 * scale, 0.4 * scale);
+    const headMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.set(0.55 * scale, 0.85 * scale, 0);
+    head.castShadow = true;
+    g.add(head);
+    disposables.geometries.push(headGeo); disposables.materials.push(headMat);
+
+    const legGeo = new THREE.BoxGeometry(0.12 * scale, 0.4 * scale, 0.12 * scale);
+    const legMat = new THREE.MeshLambertMaterial({ color: 0xd0d0d0 });
+    const legOffsets = [
+      [ 0.3, 0.2,  0.2], [ 0.3, 0.2, -0.2],
+      [-0.3, 0.2,  0.2], [-0.3, 0.2, -0.2],
+    ];
+    for (const [lx, ly, lz] of legOffsets) {
+      const leg = new THREE.Mesh(legGeo, legMat);
+      leg.position.set(lx * scale, ly * scale, lz * scale);
+      leg.castShadow = true;
+      g.add(leg);
+    }
+    disposables.geometries.push(legGeo); disposables.materials.push(legMat);
+
+    g.position.set(x, 0, z);
+    g.rotation.y = Math.random() * Math.PI * 2;
+    collisions.addSphere(new THREE.Vector3(x, 0.6 * scale, z), 0.7 * scale, { kind: 'sheep' });
+    return g;
+  }
+  (cfg.sheep || []).forEach(s => scene.add(makeSheep(s.x, s.z, s.scale)));
+
+  // ─── 🧑‍🌾 Ludki (Minecraft villager-like) ───
+  function makeVillager(x, z, scale) {
+    const g = new THREE.Group();
+    const bodyGeo = new THREE.BoxGeometry(0.5 * scale, 1.0 * scale, 0.35 * scale);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 1.0 * scale;
+    body.castShadow = true;
+    g.add(body);
+    disposables.geometries.push(bodyGeo); disposables.materials.push(bodyMat);
+
+    const headGeo = new THREE.BoxGeometry(0.45 * scale, 0.45 * scale, 0.45 * scale);
+    const headMat = new THREE.MeshLambertMaterial({ color: 0xf0c8a0 });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 1.75 * scale;
+    head.castShadow = true;
+    g.add(head);
+    disposables.geometries.push(headGeo); disposables.materials.push(headMat);
+
+    const noseGeo = new THREE.BoxGeometry(0.15 * scale, 0.25 * scale, 0.15 * scale);
+    const noseMat = new THREE.MeshLambertMaterial({ color: 0xd0a080 });
+    const nose = new THREE.Mesh(noseGeo, noseMat);
+    nose.position.set(0, 1.7 * scale, 0.25 * scale);
+    g.add(nose);
+    disposables.geometries.push(noseGeo); disposables.materials.push(noseMat);
+
+    const legGeo = new THREE.BoxGeometry(0.15 * scale, 0.5 * scale, 0.15 * scale);
+    const legMat = new THREE.MeshLambertMaterial({ color: 0x4a3520 });
+    for (const lx of [-0.12, 0.12]) {
+      const leg = new THREE.Mesh(legGeo, legMat);
+      leg.position.set(lx * scale, 0.25 * scale, 0);
+      leg.castShadow = true;
+      g.add(leg);
+    }
+    disposables.geometries.push(legGeo); disposables.materials.push(legMat);
+
+    g.position.set(x, 0, z);
+    g.rotation.y = Math.random() * Math.PI * 2;
+    collisions.addSphere(new THREE.Vector3(x, 1.0 * scale, z), 0.5 * scale, { kind: 'villager' });
+    return g;
+  }
+  (cfg.villagers || []).forEach(v => scene.add(makeVillager(v.x, v.z, v.scale)));
+
   function makeBox(x, z, w, h, d, color) {
     const geo = new THREE.BoxGeometry(w, h, d);
     const mat = new THREE.MeshLambertMaterial({ color });
@@ -384,6 +494,7 @@ window.startSimulator = function(worldKey) {
     intermediate: 0xffdd66,
     expert:       0x66ccff,
     expert_race:  0xff66cc,
+    minecraft:    0xaaffaa,   // 🌳 zielony jak trawa
   };
 
   const ghostWrap = document.getElementById('ghostToggleWrap');
@@ -567,11 +678,9 @@ window.startSimulator = function(worldKey) {
       lbList.appendChild(li);
     }
 
-    // Nowy rekord → pełna jasność + pulse + auto-fade po 3 s
     if (newRank !== null) {
       flashLeaderboard();
     } else {
-      // zwykłe renderowanie (start / auto-reset) → od razu przyciemnij
       setLeaderboardDimmed(true);
     }
   }
@@ -584,15 +693,6 @@ window.startSimulator = function(worldKey) {
   // HELPERY
   // ════════════════════════════════════════════════════════════════
 
-  /**
-   * Pokazuje overlay wyniku.
-   * @param {object} opts
-   *   won       {boolean}  czy gracz wygrał
-   *   playerTime {number|null}  czas gracza (null = jeszcze leci / zniszczenie)
-   *   ghostTime  {number|null}  czas ghosta
-   *   destroyed  {boolean}  czy przez zniszczenie
-   *   final      {boolean}  czy ostateczny wynik (true) czy "w trakcie" (false)
-   */
   function showResultOverlay({ won, playerTime, ghostTime, destroyed = false, final = true }) {
     const resultEl = document.getElementById('ghost-result');
     if (!resultEl) return;
@@ -648,7 +748,6 @@ window.startSimulator = function(worldKey) {
     setTimeout(() => resultEl.classList.add('hidden'), 400);
   }
 
-  /** Zaplanuj auto-reset po 3 s. */
   function scheduleAutoReset() {
     if (autoResetTimer) clearTimeout(autoResetTimer);
     autoResetTimer = setTimeout(() => {
@@ -657,25 +756,17 @@ window.startSimulator = function(worldKey) {
     }, 3000);
   }
 
-  /**
-   * Wykonaj auto-reset — przygotuj nową rundę.
-   * @param {object} opts
-   *   wipeGhostRecord {boolean} — jeśli true, kasuje rekord ghosta dla tej planszy
-   */
   function performAutoReset({ wipeGhostRecord = false } = {}) {
     console.log('🔄 [auto-reset] nowa runda', wipeGhostRecord ? '(WIPE ghost record)' : '');
 
-    // Ukryj overlaye
     hideResultOverlay();
     const intro = document.getElementById('ghost-intro');
     if (intro) { intro.classList.remove('show'); intro.classList.add('hidden'); }
     const destroyedEl = document.getElementById('ghost-destroyed');
     if (destroyedEl) { destroyedEl.classList.remove('show'); destroyedEl.classList.add('hidden'); }
 
-    // Reset bramek
     gateTracker.reset();
 
-    // Zatrzymaj ghosta / wyczyść rekord
     if (ghost) {
       if (wipeGhostRecord) {
         ghost.clearSaved();
@@ -684,51 +775,42 @@ window.startSimulator = function(worldKey) {
       } else {
         ghost.stopPlayback();
       }
-      // Przygotuj nagrywanie nowej rundy
       ghost.startRecording(performance.now());
     }
 
-    // Reset stanu wyścigu
     raceActive = false;
     raceFinished = false;
     playerWon = false;
     raceGhostTimeMs = null;
     raceStartTime = 0;
 
-    // Delta + grace hidden
     if (ghostDeltaEl) {
       ghostDeltaEl.classList.add('hidden');
       ghostDeltaEl.classList.remove('ahead', 'behind');
     }
     if (ghostGraceEl) ghostGraceEl.classList.add('hidden');
 
-    // 🏆 Odśwież panel TOP 3
     renderLeaderboard();
 
     console.log('👻 [auto-reset] gotowe — przeleć przez bramkę #1, żeby wystartować');
   }
 
-  /** START WYŚCIGU — gracz przeleciał przez bramkę #1. */
   function startRace(now) {
-    if (raceActive || raceFinished) return;   // już trwa / już rozstrzygnięte
+    if (raceActive || raceFinished) return;
 
     raceActive = true;
     raceStartTime = now;
 
-    // Zsynchronizuj timer bramek ze startem wyścigu
     gateTracker.startTime = now;
 
-    // Nagrywanie od nowa (dla tego przejazdu)
     if (ghost) {
       ghost.startRecording(now);
     }
 
-    // Czy jest rekord do ścigania?
     const record = ghost ? ghost.loadSaved() : null;
     raceGhostTimeMs = record ? record.timeMs : null;
 
     if (ghost && raceGhostTimeMs != null && raceGhostTimeMs > 0) {
-      // Start playbacku ghosta + intro
       ghost.startPlayback(now);
       console.log('👻 [race] START — rekord ghosta:', Math.round(raceGhostTimeMs) + 'ms');
     } else {
@@ -743,7 +825,11 @@ window.startSimulator = function(worldKey) {
   gateTracker.onGatePassed = (gate, idx) => {
     motorAudio.success();
 
-    // ─── START WYŚCIGU: bramka #1 ───
+    // 🌳 reset licznika kolizji przy starcie wyścigu (świeży przejazd)
+    if (idx === 0) {
+      window.__expertCollisionCount = 0;
+    }
+
     if (idx === 0 && !raceActive && !raceFinished) {
       startRace(performance.now());
     }
@@ -755,10 +841,14 @@ window.startSimulator = function(worldKey) {
   // META GRACZA — wszystkie bramki zielone
   // ════════════════════════════════════════════════════════════════
   gateTracker.onFinish = () => {
+    // 🌳 Wykryj bezbłędne przejście świata EXPERT → odblokuj Minecrafta
+    if (worldKey === 'expert' && window.__expertCollisionCount === 0) {
+      announceMinecraftUnlock();
+    }
+
     motorAudio.fanfare();
 
     if (!raceActive) {
-      // Nie było wyścigu (gracz nie przeleciał przez bramkę #1) — pomijamy
       return;
     }
 
@@ -771,13 +861,10 @@ window.startSimulator = function(worldKey) {
       playerWon,
     });
 
-    // Zapisz rekord (jeśli lepszy)
-    // Zapisz rekord (jeśli lepszy)
     if (ghost) {
       ghost.onLapComplete(playerTime);
     }
 
-    // 🏆 Leaderboard — zapisz czas w TOP 3
     const lbResult = leaderboard.submit(playerTime);
     if (lbResult.isNew) {
       console.log(`🏆 [leaderboard] nowy wpis #${lbResult.rank} w TOP 3`);
@@ -788,12 +875,10 @@ window.startSimulator = function(worldKey) {
     }
 
     if (!raceFinished) {
-      // Gracz doleciał PIERWSZY
       raceFinished = true;
       playerWon = true;
 
       if (raceGhostTimeMs != null && raceGhostTimeMs > 0) {
-        // Był wyścig
         showResultOverlay({
           won: true,
           playerTime,
@@ -802,7 +887,6 @@ window.startSimulator = function(worldKey) {
         });
         console.log('🏆 [result] WYGRAŁEŚ!');
       } else {
-        // Pierwszy przejazd bez rekordu — gratulacje
         const resultEl = document.getElementById('ghost-result');
         if (resultEl) {
           const iconEl  = document.getElementById('ghost-result-icon');
@@ -833,7 +917,6 @@ window.startSimulator = function(worldKey) {
 
       scheduleAutoReset();
     } else {
-      // Gracz doleciał DRUGI (ghost już był) — zaktualizuj czas gracza w overlayu
       const resultEl = document.getElementById('ghost-result');
       if (resultEl && resultEl.classList.contains('show')) {
         const pTimeEl = resultEl.querySelector('.ghost-result-player-time');
@@ -902,6 +985,10 @@ window.startSimulator = function(worldKey) {
   function triggerCollisionFlash() {
     const hud = document.getElementById('hud');
     if (hud) { hud.classList.add('collision'); setTimeout(() => hud.classList.remove('collision'), 300); }
+    // 🌳 licznik kolizji dla wykrywania bezbłędnego przejścia
+    if (typeof window.__expertCollisionCount === 'number') {
+      window.__expertCollisionCount++;
+    }
   }
 
   const onKeyDown = (e) => {
@@ -927,7 +1014,6 @@ window.startSimulator = function(worldKey) {
     }
     if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') {
       e.preventDefault();
-      // Awaryjny restart — pełny reset + WIPE rekordu ghosta dla tej planszy
       if (autoResetTimer) { clearTimeout(autoResetTimer); autoResetTimer = null; }
       performAutoReset({ wipeGhostRecord: true });
       motorAudio.beep(440, 0.15, 0.10);
@@ -937,6 +1023,16 @@ window.startSimulator = function(worldKey) {
     if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') { e.preventDefault(); audioState.masterMute = !audioState.masterMute; applyAudioState(); return; }
     if (e.code === 'KeyN' || e.key === 'n' || e.key === 'N') { e.preventDefault(); audioState.engineMuted = !audioState.engineMuted; localStorage.setItem('betafpv_engine_mute', String(audioState.engineMuted)); applyAudioState(); return; }
     if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') { e.preventDefault(); audioState.musicMuted = !audioState.musicMuted; localStorage.setItem('betafpv_music_mute', String(audioState.musicMuted)); applyAudioState(); return; }
+
+    // 🌳 UKRYTY ŚWIAT: klawisz "O" → Minecraft
+    if (e.code === 'KeyO' || e.key === 'o' || e.key === 'O') {
+      e.preventDefault();
+      console.log('🌳 [minecraft] klawisz O — przełączam na UKRYTY ŚWIAT Minecraft');
+      // Niezależnie od simState — startSimulator sam robi hard-reset
+      window.startSimulator(MINECRAFT_WORLD_KEY);
+      showToast('🌳 Witaj w UKRYTYM ŚWIECIE Minecraft!', 3000);
+      return;
+    }
   };
 
   addEventListener('keydown', onKeyDown);
@@ -1081,20 +1177,16 @@ window.startSimulator = function(worldKey) {
       if (drone.vel.y > 0) drone.vel.y = 0;
     }
 
-    // ─── Ghost ───
     if (ghost) {
       const currentLapTime = raceActive ? (now - raceStartTime) : null;
 
-      // Nagrywanie: od startu wyścigu do jego końca
       if (raceActive && !raceFinished) {
         ghost.record(drone.pos, { yaw: drone.yaw, pitch: drone.pitch, roll: drone.roll }, now);
       }
 
-      // Playback + delta + taranowanie
       ghost.update(now, currentLapTime, drone.pos);
     }
 
-    // ─── Wskaźnik grace period (🛡️) ───
     if (ghostGraceEl) {
       if (raceActive && !raceFinished && ghost && ghost.playing) {
         const elapsed = now - raceStartTime;
@@ -1110,7 +1202,6 @@ window.startSimulator = function(worldKey) {
       }
     }
 
-    // ─── Kamera ───
     if (!cameraSmooth.initialized) {
       cameraSmooth.pitch = drone.pitch;
       cameraSmooth.roll  = drone.roll;
@@ -1128,7 +1219,6 @@ window.startSimulator = function(worldKey) {
     camera.rotation.x = cameraSmooth.pitch + cameraAngleRad;
     camera.rotation.z = cameraSmooth.roll;
 
-    // ─── HUD ───
     const hudThr = document.getElementById('thr'); if (hudThr) hudThr.textContent = inp.throttle.toFixed(2);
     const hudYaw = document.getElementById('yaw'); if (hudYaw) hudYaw.textContent = inp.yaw.toFixed(2);
     const hudRol = document.getElementById('rol'); if (hudRol) hudRol.textContent = inp.roll.toFixed(2);
@@ -1147,11 +1237,19 @@ window.startSimulator = function(worldKey) {
   };
   addEventListener('resize', onResize);
 
-  // ─── Start ───
+ // ─── Start ───
   gateTracker._emitProgress();
+
+  // 🔧 ZAPISZ STAN SYMULATORA — bez tego `simState` jest zawsze null
+  simState = {
+    renderer, camera, scene, drone,
+    gateTracker, ghost, collisions, disposables,
+    onResize, onKeyDown,
+    getRafId: () => rafId,
+  };
+
   animate();
 };
-
 // ================================================================
 // ZATRZYMANIE
 // ================================================================
@@ -1175,8 +1273,8 @@ window.stopSimulator = function() {
 
   const graceEl = document.getElementById('ghost-grace');
   if (graceEl) graceEl.classList.add('hidden');
-  const lbEl = document.getElementById('leaderboard');   // ← NOWE
-  if (lbEl) lbEl.classList.add('hidden');                // ← NOWE
+  const lbEl = document.getElementById('leaderboard');
+  if (lbEl) lbEl.classList.add('hidden');
   document.body.classList.remove('screen-shake');
 
   if (simState.ghost) { simState.ghost.dispose(); simState.ghost = null; }

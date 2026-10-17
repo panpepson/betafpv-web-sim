@@ -71,11 +71,14 @@ export function makeWorld(raw) {
     },
 
     // Każdy element: { x, y, z, ... }
-    trees:  (raw.trees  || []).map(validateTree),
-    gates:  (raw.gates  || []).map(validateGate),
-    boxes:  (raw.boxes  || []).map(validateBox),
-    hills:  (raw.hills  || []).map(validateHill),
-    water:  raw.water ? validateWater(raw.water) : null,
+    trees:      (raw.trees      || []).map(validateTree),
+    gates:      (raw.gates      || []).map(validateGate),
+    boxes:      (raw.boxes      || []).map(validateBox),
+    hills:      (raw.hills      || []).map(validateHill),
+    water:      raw.water ? validateWater(raw.water) : null,
+    // 🌳 Minecraft: owce i ludki (opcjonalne)
+    sheep:      (raw.sheep      || []).map(validateSheep),
+    villagers:  (raw.villagers  || []).map(validateVillager),
   };
 }
 
@@ -129,4 +132,16 @@ function validateWater(w) {
     x: w.x ?? 0, z: w.z ?? 0,
     w: w.w ?? 100, d: w.d ?? 100,
   };
+}
+
+// 🌳 Minecraft: owce
+function validateSheep(s) {
+  req(s, 'x', 'sheep'); req(s, 'z', 'sheep');
+  return { x: s.x, y: s.y ?? 0, z: s.z, scale: s.scale ?? 1.0 };
+}
+
+// 🧑‍🌾 Minecraft: ludki
+function validateVillager(v) {
+  req(v, 'x', 'villager'); req(v, 'z', 'villager');
+  return { x: v.x, y: v.y ?? 0, z: v.z, scale: v.scale ?? 1.0 };
 }
